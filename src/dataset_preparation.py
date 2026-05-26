@@ -17,9 +17,16 @@ DATA_PATH_STR = "Data/unlabeled"
 ALLOWED_FLAGS = ["a","s","d","f"] #Much, Some, Little, None
 terminal_char_len = shutil.get_terminal_size(fallback=(80, 24)).columns
 
+def shutting_down():
+    print("\n" + "#"*terminal_char_len)
+    print("Shutting down dataset preparation program. \n")
+    sys.exit()
+ 
+ 
 #extracting image frames from videos
 while True:
     query = input("Do you wish to extract images from videos? (y/n): ")
+    print("\n")
 
     if query == 'yes' or query == 'y':
 
@@ -60,7 +67,7 @@ while True:
                 video.release()
                 cv2.destroyAllWindows()
                 print(f"Successfully extraced frames from {camid} {videoid}")
-                sys.exit()
+                shutting_down()
 
     elif query == 'no' or query == 'n':
         break
@@ -68,6 +75,7 @@ while True:
 
 while True: 
     query = input("Do you wish to classify images? (y/n): ")
+    print("\n")
     if query == 'yes' or query == 'y':
         for file in RAW_DATA_PATH.rglob('*.jpg'):
             if file.is_file():
@@ -121,10 +129,11 @@ while True:
                 pathlib.Path(changed_path).mkdir(parents=True, exist_ok=True)
                 changed_filepath = changed_path +  f"/{camid}_{videoid}_{frameid}" + "_FOAM_" + foam_flag + "_IMPURITIES_" + impure_flag + ".jpg"
                 pathlib.Path(changed_filepath).touch()
+        
+        shutting_down()
 
     elif query == 'no' or query == 'n':
         break
  
-print("\n" + "#"*terminal_char_len)
-print("Shutting down dataset preparation program. \n")
+shutting_down()
 
