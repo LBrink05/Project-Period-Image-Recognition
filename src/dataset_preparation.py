@@ -189,7 +189,7 @@ def center_crop(img, new_width, new_height):
     return img
 
 def process_images():
-    folders = ["/all/", "/testing/", "/training/", "/validating/"]
+    folders = ["/all/",  "/validating/", "/testing/", "/training/",]
     imgpath = str(FINAL_PATH) + folders[0]
 
     for file in LABELED_PATH.glob('*.jpg'):
@@ -218,15 +218,17 @@ def process_images():
     for file in Path(imgpath).glob('*.jpg'):
         value = random.random()
         if value < 0.1:
-            #validating
-            shutil.copy(file, str(FINAL_PATH) + folders[1])
-        elif value < 0.2:
             #testing
             shutil.copy(file, str(FINAL_PATH) + folders[2])
         else:
             #training
             shutil.copy(file, str(FINAL_PATH) + folders[3])
-           
+    
+    for file in Path(str(FINAL_PATH) + folders[3]).glob('*.jpg'):
+        value = random.random()
+        if value < 0.1:
+            #validation
+            shutil.copy(file, str(FINAL_PATH) + folders[1])
             
     shutting_down("Successfully processed Images!")
 
