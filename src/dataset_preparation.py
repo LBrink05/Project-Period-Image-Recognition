@@ -7,7 +7,7 @@ import os
 import time
 from collections import deque
 import sys
-
+import shutil
 from PIL import Image
 import imagehash
 
@@ -15,11 +15,11 @@ import imagehash
 RAW_DATA_PATH = Path("Data/unlabeled")
 DATA_PATH_STR = "Data/unlabeled"
 ALLOWED_FLAGS = ["a","s","d","f"] #Much, Some, Little, None
-
-
+terminal_char_len = shutil.get_terminal_size(fallback=(80, 24)).columns
 #extracting image frames from videos
 while True:
-    query = input("Do you wish to extract images from videos? (y/n)")
+    query = input("Do you wish to extract images from videos? (y/n): ")
+
     if query == 'yes' or query == 'y':
 
         for file in RAW_DATA_PATH.rglob('*.mp4'):
@@ -65,33 +65,42 @@ while True:
         break
 
 
-for file in RAW_DATA_PATH.rglob('*.jpg'):
-    if file.is_file():
-        print(f"File found: {file}")
+while True: 
+    query = input("Do you wish to classify images? (y/n): ")
+    if query == 'yes' or query == 'no':
+        for file in RAW_DATA_PATH.rglob('*.jpg'):
+            if file.is_file():
+                print(f"File found: {file}")
 
-        img = mpimg.imread(file)
-        plt.imshow(img)
-        plt.axis('off') 
+                img = mpimg.imread(file)
+                plt.imshow(img)
+                plt.axis('off') 
 
-        while True:
+                while True:
 
-            plt.show(block=False)
-            plt.pause(0.1)
-            foam_flag = input("Rate the amount of foam: [Much: a, Some: s, Little: d, None: f]")
+                    plt.show(block=False)
+                    plt.pause(0.1)
+                    foam_flag = input("Rate the amount of foam: [Much: a, Some: s, Little: d, None: f]")
 
-            if foam_flag in ALLOWED_FLAGS:
-                plt.close('all')
-                break
-            else:
-                print("Erroneous user-input received for foam.")
+                    if foam_flag in ALLOWED_FLAGS:
+                        plt.close('all')
+                        break
+                    else:
+                        print("Erroneous user-input received for foam.")
 
-            impure_flag = input("Rate the amount of impurities: [Much: a, Some: s, Little: d, None: f]")
+                    impure_flag = input("Rate the amount of impurities: [Much: a, Some: s, Little: d, None: f]")
 
-            if impure_flag in ALLOWED_FLAGS:
-                plt.close('all')
-                break
-            else:
-                print("Erroneous user-input received for impurities.")
-        
-        changed_path = file[:-4] + "FOAM_" + foam_flag + "IMPURITIES_" + impure_flag
-        pathlib.Path(changed_path).touch()
+                    if impure_flag in ALLOWED_FLAGS:
+                        plt.close('all')
+                        break
+                    else:
+                        print("Erroneous user-input received for impurities.")
+                
+                changed_path = file[:-4] + "FOAM_" + foam_flag + "IMPURITIES_" + impure_flag
+                pathlib.Path(changed_path).touch()
+
+    elif query == 'no' or query == 'n':
+        break
+
+print("\n" + "#"*terminal_char_len)
+print("Shutting down dataset preparation program. \n")
