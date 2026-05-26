@@ -20,7 +20,8 @@ ALLOWED_FLAGS = ["a","s","d","f"] #Much, Some, Little, None
 terminal_char_len = shutil.get_terminal_size(fallback=(80, 24)).columns
 center_crop_size = 384
 
-def shutting_down():
+def shutting_down(statement=""):
+    print(statement)
     print("\n" + "#"*terminal_char_len)
     print("Shutting down dataset preparation program. \n")
     sys.exit()
@@ -62,8 +63,7 @@ def extract_images():
 
             video.release()
             cv2.destroyAllWindows()
-            print(f"Successfully extraced frames from {camid} {videoid}")
-            shutting_down()
+            shutting_down(f"Successfully extraced frames from {camid} {videoid}!")
 
 def classify_images():
     print("Be aware to manually delete files before retrying classification.")
@@ -121,7 +121,7 @@ def classify_images():
             changed_filepath = changed_path +  f"/{camid}_{videoid}_{frameid}" + "_FOAM_" + foam_flag + "_IMPURITIES_" + impure_flag + ".jpg"
             shutil.copy(file, changed_filepath)
     
-    shutting_down()
+    shutting_down("Successfully classified Images!")
 
 def classify_images_vid():
     print("Be aware to manually delete files before retrying classification.")
@@ -177,7 +177,7 @@ def classify_images_vid():
             changed_filepath = changed_path +  f"/{camid}_{videoid}_{frameid}" + "_FOAM_" + foam_flag + "_IMPURITIES_" + impure_flag + ".jpg"
             shutil.copy(file, changed_filepath)
     
-    shutting_down()
+    shutting_down("Successfully classified Images")
 
 def center_crop(img, new_width, new_height):
     width, height = img.size
@@ -212,7 +212,7 @@ def process_images():
             imgpath = str(FINAL_PATH) + folders[0]
             img.save(imgpath + file.name)
             
-            
+    shutting_down("Successfully processed Images!")
 
 
 
