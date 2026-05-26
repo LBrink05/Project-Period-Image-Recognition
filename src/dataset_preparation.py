@@ -10,6 +10,7 @@ import sys
 import shutil
 from PIL import Image
 import imagehash
+import random
 
 # constants & nearly unchanging variables
 RAW_DATA_PATH = Path("Data/unlabeled")
@@ -50,6 +51,7 @@ def extract_images():
                 pil_frame = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
                 hash_o = imagehash.phash(pil_frame)
 
+                #usually 5, (higher value -> more strict), 0 is no filter
                 if any(hash_o - h < 5 for h in recent_hashes):
                     frameid += 1
                     continue
@@ -126,50 +128,48 @@ def classify_images():
 def classify_images_vid():
     print("Be aware to manually delete files before retrying classification.")
 
-    foam_flag = input("Rate the amount of foam: [Much: a, Some: s, Little: d, None: f]")
-    impure_flag = input("Rate the amount of impurities: [Much: a, Some: s, Little: d, None: f]")
+    foam_flag = "MISSING"
+    impure_flag = "MISSING"
+
+    while True:
+        foam_flag_temp = input("Rate the amount of foam: [Much: a, Some: s, Little: d, None: f]")
+        
+        if foam_flag_temp in ALLOWED_FLAGS:
+            match foam_flag_temp:
+                case 'a':
+                    foam_flag = "HIGH"
+                case 's':
+                    foam_flag = "MEDIUM"
+                case 'd':
+                    foam_flag = "LOW"
+                case 'f': 
+                    foam_flag = "NONE"
+        else:
+            print(f"Erroneous user-input received for foam: {foam_flag}")
+            continue
+
+        impure_flag_temp = input("Rate the amount of impurities: [Much: a, Some: s, Little: d, None: f]")
+
+        if impure_flag_temp in ALLOWED_FLAGS:
+            match impure_flag_temp:
+                case 'a':
+                    impure_flag = "HIGH"
+                case 's':
+                    impure_flag = "MEDIUM"
+                case 'd':
+                    impure_flag = "LOW"
+                case 'f': 
+                    impure_flag = "NONE"
+        else:
+            print(f"Erroneous user-input received for impurities: {impure_flag}")
+            continue
+        break
 
     for file in RAW_DATA_PATH.rglob('*.jpg'):
         if file.is_file():
             print(f"File found: {file}")
 
             img = mpimg.imread(file)
-
-            while True:
-
-                plt.show(block=False)
-                plt.pause(0.1)
-
-
-                if foam_flag in ALLOWED_FLAGS:
-                    match foam_flag:
-                        case 'a':
-                            foam_flag = "HIGH"
-                        case 's':
-                            foam_flag = "MEDIUM"
-                        case 'd':
-                            foam_flag = "LOW"
-                        case 'f': 
-                            foam_flag = "NONE"
-                else:
-                    print("Erroneous user-input received for foam.")
-                    break
-
-                if impure_flag in ALLOWED_FLAGS:
-                    match impure_flag:
-                        case 'a':
-                            impure_flag = "HIGH"
-                        case 's':
-                            impure_flag = "MEDIUM"
-                        case 'd':
-                            impure_flag = "LOW"
-                        case 'f': 
-                            impure_flag = "NONE"
-                else:
-                    print("Erroneous user-input received for impurities.")
-                    break
-
-                break
 
             camid, videoid, frameid =  file.stem.split('_')
             changed_path = "Data/labeled"
@@ -190,6 +190,7 @@ def center_crop(img, new_width, new_height):
 
 def process_images():
     folders = ["/all/", "/testing/", "/training/", "/validating/"]
+    imgpath = str(FINAL_PATH) + folders[0]
 
     for file in LABELED_PATH.glob('*.jpg'):
         if file.is_file():
@@ -209,8 +210,23 @@ def process_images():
             #generalize training set only (rotate, flip, mild color jitter, )
             #DO LATER
 
-            imgpath = str(FINAL_PATH) + folders[0]
             img.save(imgpath + file.name)
+    
+
+    #randomly selecting from all and putting it into the other folders
+
+    for file in Path(imgpath).glob('*.jpg'):
+        value = random.random()
+        if value < 0.1:
+            #validating
+            shutil.copy(file, str(FINAL_PATH) + folders[1])
+        elif value < 0.2:
+            #testing
+            shutil.copy(file, str(FINAL_PATH) + folders[2])
+        else:
+            #training
+            shutil.copy(file, str(FINAL_PATH) + folders[3])
+           
             
     shutting_down("Successfully processed Images!")
 
@@ -256,5 +272,5 @@ while True:
     elif query == 'no' or query == 'n':
         break
 
-shutting_down()
+shutting_down("No task was selected.")
 
