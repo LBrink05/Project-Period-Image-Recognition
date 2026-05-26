@@ -11,11 +11,12 @@ import shutil
 from PIL import Image
 import imagehash
 
-# raw_data path
+# constants & nearly unchanging variables
 RAW_DATA_PATH = Path("Data/unlabeled")
 DATA_PATH_STR = "Data/unlabeled"
 ALLOWED_FLAGS = ["a","s","d","f"] #Much, Some, Little, None
 terminal_char_len = shutil.get_terminal_size(fallback=(80, 24)).columns
+
 #extracting image frames from videos
 while True:
     query = input("Do you wish to extract images from videos? (y/n): ")
@@ -25,7 +26,7 @@ while True:
         for file in RAW_DATA_PATH.rglob('*.mp4'):
             if file.is_file():
                 frameid = 0
-                videoid = file.name[:-4]
+                videoid = file.stem
                 camid = file.parent.parent.name
                 video = cv2.VideoCapture(file)
                 recent_hashes = deque(maxlen=5)
@@ -67,7 +68,7 @@ while True:
 
 while True: 
     query = input("Do you wish to classify images? (y/n): ")
-    if query == 'yes' or query == 'no':
+    if query == 'yes' or query == 'y':
         for file in RAW_DATA_PATH.rglob('*.jpg'):
             if file.is_file():
                 print(f"File found: {file}")
@@ -80,27 +81,50 @@ while True:
 
                     plt.show(block=False)
                     plt.pause(0.1)
+
                     foam_flag = input("Rate the amount of foam: [Much: a, Some: s, Little: d, None: f]")
 
                     if foam_flag in ALLOWED_FLAGS:
-                        plt.close('all')
-                        break
+                        match foam_flag:
+                            case 'a':
+                                foam_flag = "HIGH"
+                            case 's':
+                                foam_flag = "MEDIUM"
+                            case 'd':
+                                foam_flag = "LOW"
+                            case 'f': 
+                                foam_flag = "None"
                     else:
                         print("Erroneous user-input received for foam.")
+                        break
 
                     impure_flag = input("Rate the amount of impurities: [Much: a, Some: s, Little: d, None: f]")
 
                     if impure_flag in ALLOWED_FLAGS:
-                        plt.close('all')
-                        break
+                        match impure_flag:
+                            case 'a':
+                                impure_flag = "HIGH"
+                            case 's':
+                                impure_flag = "MEDIUM"
+                            case 'd':
+                                impure_flag = "LOW"
+                            case 'f': 
+                                impure_flag = "None"
                     else:
                         print("Erroneous user-input received for impurities.")
+                        break
+
+                    break
                 
-                changed_path = file[:-4] + "FOAM_" + foam_flag + "IMPURITIES_" + impure_flag
-                pathlib.Path(changed_path).touch()
+                camid, videoid, frameid =  file.stem.split('_')
+                changed_path = "Data/labeled/all/" + f"{camid}/{videoid}"
+                pathlib.Path(changed_path).mkdir(parents=True, exist_ok=True)
+                changed_filepath = changed_path +  f"/{camid}_{videoid}_{frameid}" + "_FOAM_" + foam_flag + "_IMPURITIES_" + impure_flag + ".jpg"
+                pathlib.Path(changed_filepath).touch()
 
     elif query == 'no' or query == 'n':
         break
-
+ 
 print("\n" + "#"*terminal_char_len)
 print("Shutting down dataset preparation program. \n")
+
