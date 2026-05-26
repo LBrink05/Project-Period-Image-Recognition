@@ -123,6 +123,62 @@ def classify_images():
     
     shutting_down()
 
+def classify_images_vid():
+    print("Be aware to manually delete files before retrying classification.")
+
+    foam_flag = input("Rate the amount of foam: [Much: a, Some: s, Little: d, None: f]")
+    impure_flag = input("Rate the amount of impurities: [Much: a, Some: s, Little: d, None: f]")
+
+    for file in RAW_DATA_PATH.rglob('*.jpg'):
+        if file.is_file():
+            print(f"File found: {file}")
+
+            img = mpimg.imread(file)
+
+            while True:
+
+                plt.show(block=False)
+                plt.pause(0.1)
+
+
+                if foam_flag in ALLOWED_FLAGS:
+                    match foam_flag:
+                        case 'a':
+                            foam_flag = "HIGH"
+                        case 's':
+                            foam_flag = "MEDIUM"
+                        case 'd':
+                            foam_flag = "LOW"
+                        case 'f': 
+                            foam_flag = "NONE"
+                else:
+                    print("Erroneous user-input received for foam.")
+                    break
+
+                if impure_flag in ALLOWED_FLAGS:
+                    match impure_flag:
+                        case 'a':
+                            impure_flag = "HIGH"
+                        case 's':
+                            impure_flag = "MEDIUM"
+                        case 'd':
+                            impure_flag = "LOW"
+                        case 'f': 
+                            impure_flag = "NONE"
+                else:
+                    print("Erroneous user-input received for impurities.")
+                    break
+
+                break
+
+            camid, videoid, frameid =  file.stem.split('_')
+            changed_path = "Data/labeled"
+            pathlib.Path(changed_path).mkdir(parents=True, exist_ok=True)
+            changed_filepath = changed_path +  f"/{camid}_{videoid}_{frameid}" + "_FOAM_" + foam_flag + "_IMPURITIES_" + impure_flag + ".jpg"
+            shutil.copy(file, changed_filepath)
+    
+    shutting_down()
+
 def center_crop(img, new_width, new_height):
     width, height = img.size
     left = (width - new_width)/2
@@ -157,7 +213,7 @@ def process_images():
             img.save(imgpath + file.name)
             
             
-            
+
 
 
 #extracting image frames from videos
@@ -171,17 +227,24 @@ while True:
     elif query == 'no' or query == 'n':
         break
 
+# Querying if image by image or whole video
+
 #classifying images manually 
 while True: 
     query = input("Do you wish to classify images? (y/n): ")
     print("\n")
 
-    if query == 'yes' or query == 'y':
-        classify_images()
-        
-    elif query == 'no' or query == 'n':
+    if query == 'no' or query == 'n':
         break
 
+    while True:
+        subquery = input("Do you wish to classify images by video or per-image? (v/i)")
+        if subquery == 'v':
+            classify_images_vid()
+        elif subquery == 'i':
+            classify_images()
+    
+            
 #processing images
 while True:
     query = input("Do you wish to process the classified images? (y/n)")
