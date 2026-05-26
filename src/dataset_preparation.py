@@ -91,7 +91,7 @@ def classify_images():
                         case 'd':
                             foam_flag = "LOW"
                         case 'f': 
-                            foam_flag = "None"
+                            foam_flag = "NONE"
                 else:
                     print("Erroneous user-input received for foam.")
                     break
@@ -107,7 +107,7 @@ def classify_images():
                         case 'd':
                             impure_flag = "LOW"
                         case 'f': 
-                            impure_flag = "None"
+                            impure_flag = "NONE"
                 else:
                     print("Erroneous user-input received for impurities.")
                     break
@@ -152,8 +152,6 @@ def process_images():
 
             #generalize training set only (rotate, flip, mild color jitter, )
             #DO LATER
-
-
 
             imgpath = str(FINAL_PATH) + folders[0]
             img.save(imgpath + file.name)
