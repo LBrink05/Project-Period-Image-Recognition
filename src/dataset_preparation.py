@@ -14,7 +14,7 @@ DATA_PATH_STR = "Data/unlabeled"
 ALLOWED_FLAGS = ["a","s","d","f"] #Much, Some, Little, None
 
 #extracting image frames from videos
-while:
+while True:
     query = input("Do you wish to extract images from videos? (y/n)")
     if query == yes or query == y:
         for file in RAW_DATA_PATH.rglob('*.mp4'):
@@ -45,7 +45,7 @@ while:
                 video.release()
                 cv2.destroyAllWindows()
                 break
-    else if query == no or query == n:
+    elif query == no or query == n:
         break
 
 
