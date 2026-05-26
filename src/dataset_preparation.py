@@ -13,9 +13,12 @@ import imagehash
 
 # constants & nearly unchanging variables
 RAW_DATA_PATH = Path("Data/unlabeled")
-DATA_PATH_STR = "Data/unlabeled"
+LABELED_PATH = Path("Data/labeled")
+FINAL_PATH = Path("Data/final")
+
 ALLOWED_FLAGS = ["a","s","d","f"] #Much, Some, Little, None
 terminal_char_len = shutil.get_terminal_size(fallback=(80, 24)).columns
+center_crop_size = 384
 
 def shutting_down():
     print("\n" + "#"*terminal_char_len)
@@ -30,7 +33,7 @@ def extract_images():
             camid = file.parent.parent.name
             video = cv2.VideoCapture(file)
             recent_hashes = deque(maxlen=5)
-            filepath = DATA_PATH_STR + f"/{camid}/{videoid}/"
+            filepath = str(RAW_DATA_PATH) + f"/{camid}/{videoid}/"
             pathlib.Path(filepath).mkdir(parents=True, exist_ok=True)
 
             #Remove any prior generated images in cami/videoi directory
@@ -63,6 +66,7 @@ def extract_images():
             shutting_down()
 
 def classify_images():
+    print("Be aware to manually delete files before retrying classification.")
     for file in RAW_DATA_PATH.rglob('*.jpg'):
         if file.is_file():
             print(f"File found: {file}")
@@ -109,14 +113,53 @@ def classify_images():
                     break
 
                 break
-            
+
+            plt.close('all')
             camid, videoid, frameid =  file.stem.split('_')
-            changed_path = "Data/labeled/"
+            changed_path = "Data/labeled"
             pathlib.Path(changed_path).mkdir(parents=True, exist_ok=True)
             changed_filepath = changed_path +  f"/{camid}_{videoid}_{frameid}" + "_FOAM_" + foam_flag + "_IMPURITIES_" + impure_flag + ".jpg"
-            pathlib.Path(changed_filepath).touch()
+            shutil.copy(file, changed_filepath)
     
     shutting_down()
+
+def center_crop(img, new_width, new_height):
+    width, height = img.size
+    left = (width - new_width)/2
+    top = (height - new_height)/2
+    right = (width + new_width)/2
+    bottom = (height + new_height)/2
+    img =  img.crop((left, top, right, bottom))
+    return img
+
+def process_images():
+    folders = ["/all/", "/testing/", "/training/", "/validating/"]
+
+    for file in LABELED_PATH.glob('*.jpg'):
+        if file.is_file():
+
+            #resizing images to set resolution (1:1) of 384×384 
+            img = Image.open(file).convert("RGB")
+            new_width, new_height = img.size
+
+            if new_width < new_height:
+                new_height = new_width
+            else: 
+                new_width = new_height
+
+            img = center_crop(img, new_width, new_height)
+            img = img.resize((384, 384))
+
+            #generalize training set only (rotate, flip, mild color jitter, )
+            #DO LATER
+
+
+
+            imgpath = str(FINAL_PATH) + folders[0]
+            img.save(imgpath + file.name)
+            
+            
+            
 
 
 #extracting image frames from videos
@@ -130,17 +173,27 @@ while True:
     elif query == 'no' or query == 'n':
         break
 
-
+#classifying images manually 
 while True: 
     query = input("Do you wish to classify images? (y/n): ")
     print("\n")
+
     if query == 'yes' or query == 'y':
         classify_images()
         
     elif query == 'no' or query == 'n':
         break
 
+#processing images
 while True:
-    query = input("Do you wish to ")
+    query = input("Do you wish to process the classified images? (y/n)")
+    print("\n")
+
+    if query == 'yes' or query == 'y':
+        process_images()
+
+    elif query == 'no' or query == 'n':
+        break
+
 shutting_down()
 
