@@ -7,12 +7,16 @@ class CNN:
         self.depth = depth
 
         self.kernels_shape = (depth, self.input_depth, kernel_size, kernel_size)
+        self.kernels = np.random.randn(depth, self.input_depth, kernel_size, kernel_size) * 0.1
+        self.biases = np.random.randn(depth, kernel_size, kernel_size) * 0.1
 
-        self.kernels = np.random.randn(*self.kernels_shape) * 0.1
+    
+        
 
         print(f"layer with filter of: {kernel_size}x{kernel_size}")
 
-  #  def forward(self, x): 
+  #  def forward(self, data): 
+        self.
 
 
 
