@@ -1,0 +1,53 @@
+## PRO357 GIVING MACHINES VISION USING MACHINE LEARNING
+
+# import cnn.py (place holder until have cnn.py)
+
+import numpy as np
+import pandas as pd
+import os
+import cv2
+
+def train():
+    print("\n[Training]")
+    print("Loading training dataset...")
+    print("Training started...\n")
+# to add!!
+# load training data as variable (train_data)
+# call cnn training function
+
+def test():
+    print("\n[TESTING]")
+    print("Loading testing dataset...")
+    print("Testing started...\n")
+# to add!!
+# load testing data as variable (test_data)
+# call cnn testing fucntion
+
+def menu():
+    print("--------------------------------------------------")
+    print("PRO357 - Giving Machines Vision Using Machine Learning")
+    print("--------------------------------------------------")
+    print("1. Train model")
+    print("2. Test model")
+    print("3. Exit")
+    print("--------------------------------------------------")
+
+def main():
+    while True:
+        menu()
+        choice = input("Select and option: ").strip()
+        if choice == "1":
+            train()
+        elif choice == "2":
+            test()
+        elif choice == "3":
+            print("Exiting program :)")
+            break
+        else:
+            print("\nError: Invalid input.")
+            print("Please enter 1, 2 or 3.")
+
+
+# program executed directly only runs main
+if __name__ == "__main__":
+    main()
