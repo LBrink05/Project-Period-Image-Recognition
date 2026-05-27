@@ -2,26 +2,49 @@
 
 # import cnn.py (place holder until have cnn.py)
 
+from pathlib import Path
 import numpy as np
-import pandas as pd
 import os
 import cv2
 
+TRAINING_PATH = Path("Data/final/training")
+TESTING_PATH = Path("Data/final/testing")
+
+def load_dataset(folder: Path):
+    images, labels = [], []
+    for file in sorted(folder.glob("*.jpg")):
+        img = cv2.imread(str(file))
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
+        img = np.array(img, dtype=np.float32) / 255.0  # Normalize to [0, 1]
+        img = img.transpose(2, 0, 1)  # Change to (C, H, W) format
+        images.append(img)
+
+        parts = file.stem.split("_")
+        label = {
+            "foam":      parts[parts.index("FOAM") + 1],
+            "bitumin":   parts[parts.index("BITUMIN") + 1],
+            "aluminium": parts[parts.index("AL") + 1],
+            "eps":       parts[parts.index("EPS") + 1],
+        }
+        labels.append(label)
+
+    return np.array(images), labels
+            
 def train():
     print("\n[Training]")
     print("Loading training dataset...")
+    train_data, train_labels = load_dataset(TRAINING_PATH)
+    print(f"Loaded {len(train_labels)} training images, shape: {train_data.shape}.")
     print("Training started...\n")
-# to add!!
-# load training data as variable (train_data)
-# call cnn training function
-
+     # TODO:call cnn.train(train_data, train_labels)
 def test():
     print("\n[TESTING]")
     print("Loading testing dataset...")
+    test_data, test_labels = load_dataset(TESTING_PATH)
+    print(f"Loaded {len(test_labels)} testing images, shape: {test_data.shape}.")
     print("Testing started...\n")
-# to add!!
-# load testing data as variable (test_data)
-# call cnn testing fucntion
+     # TODO:call cnn.test(test_data, test_labels)
+
 
 def menu():
     print("--------------------------------------------------")
