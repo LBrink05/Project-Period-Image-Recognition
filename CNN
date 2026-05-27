@@ -12,6 +12,9 @@ class CNN:
 
         print(f"layer with filter of: {kernel_size}x{kernel_size}")
 
+  #  def forward(self, x): 
+
+
 
     
     
