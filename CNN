@@ -11,7 +11,7 @@ class CNN:
         self.kernels = np.random.randn(depth, self.input_depth, kernel_size, kernel_size) * 0.1
         self.biases = np.random.randn(depth, kernel_size, kernel_size) * 0.1 #
 
-        self.output_shape = (depth, kernel_size, kernel_size) # define kernel #fix
+        self.output_shape = (depth, kernel_size, kernel_size) #fix
  
 
   #  def forward(self, data): 
