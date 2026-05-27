@@ -6,7 +6,7 @@ class CNN:
         self.kernel_size = kernel_size
         self.depth = depth
 
-        self.kernels_shape = (depth, self.input_depth, kernel_size, kernel_size) #(filters, colours , size)
+        self.kernels_shape = (depth, self.input_depth, kernel_size, kernel_size)
 
         self.kernels = np.random.randn(*self.kernels_shape) * 0.1
 
