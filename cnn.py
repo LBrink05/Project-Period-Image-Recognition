@@ -14,7 +14,7 @@ class CNN:
 
         self.kernels_shape = (depth, self.input_depth, kernel_size, kernel_size)
         self.kernels = np.random.randn(depth, self.input_depth, kernel_size, kernel_size) * 0.1
-        self.biases = np.zeros((depth, 1)) 
+        self.biases = np.zeros((depth, 1, 1)) 
 
 
         self.output_height = self.input_height - kernel_size + 1
@@ -24,7 +24,7 @@ class CNN:
 
   #  def forward(self, data): 
         self.input = data
-        self.output = np.zeros(output.shape)
+        self.output = np.zeros(self.output_shape)
 
     for filters in range(self.depth):
         for colours in range (self.input_depth):
