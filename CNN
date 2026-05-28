@@ -16,18 +16,24 @@ class CNN:
         self.kernels = np.random.randn(depth, self.input_depth, kernel_size, kernel_size) * 0.1
         self.biases = np.zeros((depth, 1)) 
 
-        self.output_shape = (depth, kernel_size, kernel_size) #fix
+
+        self.output_height = self.input_height - kernel_size + 1
+        self.output_width = self.input_width - kernel_size + 1
+        self.output_shape = (depth, self.output_height, self.output_width) 
  
 
   #  def forward(self, data): 
         self.input = data
-        self.output = [
+        self.output = np.zeros(output.shape)
 
     for filters in range(self.depth):
         for colours in range (self.input_depth):
 
-            convolution = signal.correlate2d(data[colours], self.kernels[filters,colours], "valid")
-         self.output += convolution   #should we also add the biases here?
+            cross_correlation = signal.correlate2d(data[colours], self.kernels[filters,colours], "valid")
+             self.output += cross_correlation 
+        self.output += self.biases
+        
+
 
     return self.output
 
