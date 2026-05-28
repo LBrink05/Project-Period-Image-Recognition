@@ -7,12 +7,20 @@ import numpy as np
 import os
 import cv2
 import shutil
+from colorama import Fore, Back, Style
+import sys
 
 TRAINING_PATH = Path("Data/final/training")
 TESTING_PATH = Path("Data/final/testing")
 VALIDATING_PATH = Path("Data/final/validating")
 
 terminal_char_len = shutil.get_terminal_size(fallback=(80, 24)).columns
+
+def shutting_down(statement="", style=""):
+    print(style + statement + Style.RESET_ALL)
+    print("\n" + "#"*terminal_char_len)
+    print("Shutting down interface program. \n")
+    sys.exit()
 
 def load_dataset(folder: Path):
     images, labels = [], []
@@ -39,7 +47,7 @@ def train():
     print("Loading training dataset...")
     train_data, train_labels = load_dataset(TRAINING_PATH)
     print(f"Loaded {len(train_labels)} training images, shape: {train_data.shape}.")
-    print("Training started...\n")
+    print(Fore.GREEN + "Training started...\n" + Style.RESET_ALL)
      # TODO:call cnn.train(train_data, train_labels)
 
 def test():
@@ -47,7 +55,7 @@ def test():
     print("Loading testing dataset...")
     test_data, test_labels = load_dataset(TESTING_PATH)
     print(f"Loaded {len(test_labels)} testing images, shape: {test_data.shape}.")
-    print("Testing started...\n")
+    print(Fore.GREEN + "Testing started...\n" + Style.RESET_ALL)
      # TODO:call cnn.test(test_data, test_labels)
 
 def validate():
@@ -55,7 +63,7 @@ def validate():
     print("Loading validating dataset...")
     val_data, val_labels = load_dataset(VALIDATING_PATH)
     print(f"Loaded {len(val_labels)} validating images, shape: {val_data.shape}.")
-    print("Validating started...\n")
+    print(Fore.GREEN + "Validating started...\n" + Style.RESET_ALL)
     # TODO:call cnn.val(val_data, val_labels)
 
 def menu():
@@ -77,13 +85,16 @@ def main():
         elif choice == "2":
             test()
         elif choice == "3":
-            print("Exiting program :)")
+            validate()
+        elif choice == "4":
+            shutting_down("Exiting program :)", Fore.YELLOW)
             break
         else:
-            print("\nErroneous user-input received.")
-            print("Please enter 1, 2 or 3.")
+            print(Fore.RED + "\nErroneous user-input received." + Style.RESET_ALL)
+            print(Fore.YELLOW + "Please enter 1, 2 or 3." + Style.RESET_ALL)
 
 
 # program executed directly only runs main
 if __name__ == "__main__":
     main()
+ 
