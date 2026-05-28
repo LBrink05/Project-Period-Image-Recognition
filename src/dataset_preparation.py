@@ -269,12 +269,12 @@ while True:
     if query == 'no' or query == 'n':
         break
 
-    while True:
-        subquery = input("Do you wish to classify images by video or per-image? (v/i)")
-        if subquery == 'v':
-            classify_images_vid()
-        elif subquery == 'i':
-            classify_images()
+    #while True:
+        #subquery = input("Do you wish to classify images by video or per-image? (v/i)")
+        #if subquery == 'v':
+    classify_images_vid()
+        #elif subquery == 'i':
+            #classify_images()
     
             
 #processing images
