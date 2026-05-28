@@ -1,2 +1,6 @@
 env/
-Data/
+Data/final/*
+Data/labeled/*
+Data/random/*
+Data/unlabeled/cam0/*
+Data/unlabeled/cam1/*
