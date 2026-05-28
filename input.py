@@ -6,15 +6,18 @@ from pathlib import Path
 import numpy as np
 import os
 import cv2
+import shutil
 
 TRAINING_PATH = Path("Data/final/training")
 TESTING_PATH = Path("Data/final/testing")
+VALIDATING_PATH = Path("Data/final/validating")
+
+terminal_char_len = shutil.get_terminal_size(fallback=(80, 24)).columns
 
 def load_dataset(folder: Path):
     images, labels = [], []
     for file in sorted(folder.glob("*.jpg")):
         img = cv2.imread(str(file))
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
         img = np.array(img, dtype=np.float32) / 255.0  # Normalize to [0, 1]
         img = img.transpose(2, 0, 1)  # Change to (C, H, W) format
         images.append(img)
@@ -23,12 +26,13 @@ def load_dataset(folder: Path):
         label = {
             "foam":      parts[parts.index("FOAM") + 1],
             "bitumin":   parts[parts.index("BITUMIN") + 1],
-            "aluminium": parts[parts.index("AL") + 1],
+            "aluminium": parts[parts.index("ALUMINIUM") + 1],
             "eps":       parts[parts.index("EPS") + 1],
         }
         labels.append(label)
 
-    return np.array(images), labels
+    data = np.array(images)
+    return data, labels
             
 def train():
     print("\n[Training]")
@@ -37,28 +41,37 @@ def train():
     print(f"Loaded {len(train_labels)} training images, shape: {train_data.shape}.")
     print("Training started...\n")
      # TODO:call cnn.train(train_data, train_labels)
+
 def test():
-    print("\n[TESTING]")
+    print("\n[Testing]")
     print("Loading testing dataset...")
     test_data, test_labels = load_dataset(TESTING_PATH)
     print(f"Loaded {len(test_labels)} testing images, shape: {test_data.shape}.")
     print("Testing started...\n")
      # TODO:call cnn.test(test_data, test_labels)
 
+def validate():
+    print("\n[Validating]")
+    print("Loading validating dataset...")
+    val_data, val_labels = load_dataset(VALIDATING_PATH)
+    print(f"Loaded {len(val_labels)} validating images, shape: {val_data.shape}.")
+    print("Validating started...\n")
+    # TODO:call cnn.val(val_data, val_labels)
 
 def menu():
-    print("--------------------------------------------------")
+    print("-"*terminal_char_len)
     print("PRO357 - Giving Machines Vision Using Machine Learning")
-    print("--------------------------------------------------")
-    print("1. Train model")
-    print("2. Test model")
-    print("3. Exit")
-    print("--------------------------------------------------")
+    print("-"*terminal_char_len)
+    print("(1) Train model")
+    print("(2) Test model")
+    print("(3) Validate model")
+    print("(4) Exit")
+    print("-"*terminal_char_len)
 
 def main():
     while True:
         menu()
-        choice = input("Select and option: ").strip()
+        choice = input("Please select an option: ").strip()
         if choice == "1":
             train()
         elif choice == "2":
@@ -67,7 +80,7 @@ def main():
             print("Exiting program :)")
             break
         else:
-            print("\nError: Invalid input.")
+            print("\nErroneous user-input received.")
             print("Please enter 1, 2 or 3.")
 
 

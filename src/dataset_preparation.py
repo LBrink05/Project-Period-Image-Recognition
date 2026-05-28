@@ -8,6 +8,7 @@ import time
 from collections import deque
 import sys
 import shutil
+from colorama import Fore, Back, Style
 from PIL import Image
 import imagehash
 import random
@@ -21,8 +22,8 @@ ALLOWED_FLAGS = ["a","s","d","f"] #Much, Some, Little, None
 terminal_char_len = shutil.get_terminal_size(fallback=(80, 24)).columns
 center_crop_size = 384
 
-def shutting_down(statement=""):
-    print(statement)
+def shutting_down(statement="", style=""):
+    print(style + statement + Style.RESET_ALL)
     print("\n" + "#"*terminal_char_len)
     print("Shutting down dataset preparation program. \n")
     sys.exit()
@@ -81,100 +82,10 @@ def extract_images():
             video.release()
             cv2.destroyAllWindows()
 
-    shutting_down(f"Successfully extraced frames!")
-
-def classify_images():
-    print("Be aware to manually delete files before retrying classification.")
-    for file in RAW_DATA_PATH.rglob('*.jpg'):
-        if file.is_file():
-            print(f"File found: {file}")
-
-            img = mpimg.imread(file)
-            plt.imshow(img)
-            plt.axis('off') 
-
-            while True:
-
-                plt.show(block=False)
-                plt.pause(0.1)
-
-                foam_flag_temp = input("Rate the amount of foam: [Much: a, Some: s, Little: d, None: f]")
-                
-                if foam_flag_temp in ALLOWED_FLAGS:
-                    match foam_flag_temp:
-                        case 'a':
-                            foam_flag = "HIGH"
-                        case 's':
-                            foam_flag = "MEDIUM"
-                        case 'd':
-                            foam_flag = "LOW"
-                        case 'f': 
-                            foam_flag = "NONE"
-                else:
-                    print(f"Erroneous user-input received for foam: {foam_flag}")
-                    continue
-
-                bitumin_flag_temp = input("Rate the amount of bitumin: [Much: a, Some: s, Little: d, None: f]")
-
-                if bitumin_flag_temp in ALLOWED_FLAGS:
-                    match bitumin_flag_temp:
-                        case 'a':
-                            bitumin_flag = "HIGH"
-                        case 's':
-                            bitumin_flag = "MEDIUM"
-                        case 'd':
-                            bitumin_flag = "LOW"
-                        case 'f': 
-                            bitumin_flag = "NONE"
-                else:
-                    print(f"Erroneous user-input received for bitumin: {bitumin_flag}")
-                    continue
-                
-                aluminium_flag_temp = input("Rate the amount of aluminium: [Much: a, Some: s, Little: d, None: f]")
-
-                if aluminium_flag_temp in ALLOWED_FLAGS:
-                    match aluminium_flag_temp:
-                        case 'a':
-                            aluminium_flag = "HIGH"
-                        case 's':
-                            aluminium_flag = "MEDIUM"
-                        case 'd':
-                            aluminium_flag = "LOW"
-                        case 'f': 
-                            aluminium_flag = "NONE"
-                else:
-                    print(f"Erroneous user-input received for aluminium: {aluminium_flag}")
-                    continue
-
-                eps_flag_temp = input("Rate the amount of eps: [Much: a, Some: s, Little: d, None: f]")
-                
-                if eps_flag_temp in ALLOWED_FLAGS:
-                    match eps_flag_temp:
-                        case 'a':
-                            eps_flag = "HIGH"
-                        case 's':
-                            eps_flag = "MEDIUM"
-                        case 'd':
-                            eps_flag = "LOW"
-                        case 'f': 
-                            eps_flag = "NONE"
-                else:
-                    print(f"Erroneous user-input received for eps: {eps_flag}")
-                    continue
-                
-                break
-
-            plt.close('all')
-            camid, videoid, frameid =  file.stem.split('_')
-            changed_path = "Data/labeled"
-            pathlib.Path(changed_path).mkdir(parents=True, exist_ok=True)
-            changed_filepath = changed_path +  f"/{camid}_{videoid}_{frameid}" + "_FOAM_" + foam_flag + "_BITUMIN_" + bitumin_flag + "_AL_" + aluminium_flag + "_EPS_" + eps_flag + ".jpg"
-            shutil.copy(file, changed_filepath)
-    
-    shutting_down("Successfully classified Images!")
+    shutting_down("Successfully extraced frames!", Fore.GREEN)
 
 def classify_images_vid():
-    input("Be aware to manually delete files before retrying classification.")
+    input(Fore.YELLOW + "Be aware to manually delete files before retrying classification." + Style.RESET_ALL)
 
     for file in RAW_DATA_PATH.rglob('*.jpg'):
         if file.is_file():
@@ -191,7 +102,7 @@ def classify_images_vid():
             changed_filepath = changed_path +  f"/{camid}_{videoid}_{frameid}" + "_FOAM_" + foam_flag + "_BITUMIN_" + bitumin_flag + "_AL_" + aluminium_flag + "_EPS_" + eps_flag + ".jpg"
             shutil.copy(file, changed_filepath)
     
-    shutting_down("Successfully classified Images")
+    shutting_down("Successfully classified Images", Fore.GREEN)
 
 def center_crop(img, new_width, new_height):
     width, height = img.size
@@ -243,8 +154,9 @@ def process_images():
         if value < 0.1:
             #validation
             shutil.copy(file, str(FINAL_PATH) + folders[1])
-            
-    shutting_down("Successfully processed Images!")
+
+    
+    shutting_down("Successfully processed Images!", Fore.GREEN)
 
 
 
@@ -269,13 +181,8 @@ while True:
     if query == 'no' or query == 'n':
         break
 
-    #while True:
-        #subquery = input("Do you wish to classify images by video or per-image? (v/i)")
-        #if subquery == 'v':
     classify_images_vid()
-        #elif subquery == 'i':
-            #classify_images()
-    
+
             
 #processing images
 while True:
@@ -288,5 +195,6 @@ while True:
     elif query == 'no' or query == 'n':
         break
 
-shutting_down("No task was selected.")
+
+shutting_down("No task was selected.", Fore.RED)
 
