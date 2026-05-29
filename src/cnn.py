@@ -248,7 +248,7 @@ class MaxPooling:
     
 
 
-def load_dataset(folder: Path):
+def load_dataset(folder: Path, batchsize, batchindex):
     images, labels = [], []
     for file in sorted(folder.glob("*.jpg")):
         img = cv2.imread(str(file))

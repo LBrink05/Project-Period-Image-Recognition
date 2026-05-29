@@ -22,25 +22,24 @@ def shutting_down(statement="", style=""):
     print("\n" + "#"*terminal_char_len)
     print("Shutting down interface program. \n")
     sys.exit()
-            
+
+#loading data batch wise to not run out of memory, hence Path used for functions
+          
 def train():
     print("\n[Training]")
     print(Fore.GREEN + "Training started...\n" + Style.RESET_ALL)
-    #loading data batch wise to not run out of memory
     cnn.train(TRAINING_PATH)
     print(Fore.GREEN + "Training successfully completed.\n" + Style.RESET_ALL)
 
 def test():
     print("\n[Testing]")
     print(Fore.GREEN + "Testing started...\n" + Style.RESET_ALL)
-    #loading data batch wise to not run out of memory
     cnn.test(TESTING_PATH)
     print(Fore.GREEN + "Testing successfully completed.\n" + Style.RESET_ALL)
 
 def validate():
     print("\n[Validating]")
     print(Fore.GREEN + "Validating started...\n" + Style.RESET_ALL)
-    #loading data batch wise to not run out of memory
     cnn.val(VALIDATING_PATH)
     print(Fore.GREEN + "Validating successfully completed.\n" + Style.RESET_ALL)
 
