@@ -11,11 +11,6 @@ The labeled dataset is split into a training batch (80%) to train the model, a v
 
 Data leaks are expected with minimal footage, but limited with p-hashing to avoid near-duplicate images.
 
-## PROGRAM STRUCTURE
-The images will be extracted from videos, classified and distributed to the training, testing and validations subsets using **dataset.py**.
-The program is split into 3 scripts, where the **input.py** script represents the user-interface and **cnn.py** is the main working part of the program. The user-interface is loading the dataset whilst the convolutional neural-network handles the machine learning required to identify the state of the belt's contents.
-
-
 ## VIDEO BATCHES
 We filmed these 10 batches, with 6 videos per batch, getting around 5-10 seconds per video.
 
@@ -30,7 +25,7 @@ We filmed these 10 batches, with 6 videos per batch, getting around 5-10 seconds
 9. pirpurmoreal2 - mix of pirpur and more aluminium (darker, more connected foam)
 10. pirpurmorebitumen - mix of pirpur and more bitumen
 
-For the classifications we abided by these guidelines:
+For the manual classifications we abided by these guidelines:
 Classification order is FOAM, BITUMEN, ALUMINIUM, EPS.
 
 pirpur: HIGH NONE NONE NONE, 
@@ -42,3 +37,10 @@ pirpurbitumen: MEDIUM LOW NONE NONE
 pirpureps: MEDIUM NONE NONE MEDIUM,
 pirpurmoreal1 and pirpurmoreal2 judge yourself, 
 pirpurmorebitumen: MEDIUM MEDIUM NONE NONE
+
+## PROGRAM STRUCTURE
+The images will be extracted from videos, classified and distributed to the training, testing and validations subsets using **dataset.py**.
+The program is split into 3 scripts, where the **input.py** script represents the user-interface and **cnn.py** is the main working part of the program. The user-interface is loading the dataset whilst the convolutional neural-network handles the machine learning required to identify the state of the belt's contents.
+
+
+
