@@ -82,7 +82,7 @@ def extract_images():
             video.release()
             cv2.destroyAllWindows()
 
-    shutting_down("Successfully extraced frames!", Fore.GREEN)
+    shutting_down("Successfully extracted frames!", Fore.GREEN)
 
 def classify_images_vid():
     input(Fore.YELLOW + "Be aware to manually delete files before retrying classification." + Style.RESET_ALL)
@@ -95,12 +95,19 @@ def classify_images_vid():
 
             camid, videoid, frameid =  file.stem.split('_')
             
-            foam_flag, bitumin_flag, aluminium_flag, eps_flag = extract_labels(camid, videoid)
+            foam_flag, bitumen_flag, aluminium_flag, eps_flag = extract_labels(camid, videoid)
 
             changed_path = "Data/labeled"
             pathlib.Path(changed_path).mkdir(parents=True, exist_ok=True)
-            changed_filepath = changed_path +  f"/{camid}_{videoid}_{frameid}" + "_FOAM_" + foam_flag + "_BITUMIN_" + bitumin_flag + "_AL_" + aluminium_flag + "_EPS_" + eps_flag + ".jpg"
-            shutil.copy(file, changed_filepath)
+            changed_filepath = changed_path +  f"/{camid}_{videoid}_{frameid}" + "_FOAM_" + foam_flag + "_BITUMEN_" + bitumen_flag + "_AL_" + aluminium_flag + "_EPS_" + eps_flag + ".jpg"
+            shutil.move(file, changed_filepath)
+            
+    #removing leftover empty directories
+    path = Path("Data/unlabeled")
+    for child in path.iterdir():
+        if child.is_dir() and child.name != 'videos':
+            shutil.rmtree(child)
+
     
     shutting_down("Successfully classified Images", Fore.GREEN)
 
@@ -114,12 +121,18 @@ def center_crop(img, new_width, new_height):
     return img
 
 def process_images():
+    
+    #cleaning prior processed images
+    for p in Path("Data/final").rglob("*"):
+        if p.is_file():
+            p.unlink()
+
     folders = ["/all/",  "/validating/", "/testing/", "/training/",]
     imgpath = str(FINAL_PATH) + folders[0]
 
     for file in LABELED_PATH.glob('*.jpg'):
         if file.is_file():
-
+            print(f"File found: {file}")
             #resizing images to set resolution (1:1) of 384×384 
             img = Image.open(file).convert("RGB")
             new_width, new_height = img.size

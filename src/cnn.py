@@ -2,8 +2,6 @@ import numpy as np
 from scipy import signal  
 
 
-
-
 # 1. CNN class(forward+backward)
 # ============================================================================
 class CNN: 
