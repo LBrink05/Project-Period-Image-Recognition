@@ -1,5 +1,6 @@
 import numpy as np
-from scipy import signal  
+from scipy import signal 
+from pathlib import Path 
 
 
 # 1. CNN class(forward+backward)
@@ -247,4 +248,31 @@ class MaxPooling:
     
 
 
+def load_dataset(folder: Path):
+    images, labels = [], []
+    for file in sorted(folder.glob("*.jpg")):
+        img = cv2.imread(str(file))
+        img = np.array(img, dtype=np.float32) / 255.0  # Normalize to [0, 1]
+        img = img.transpose(2, 0, 1)  # Change to (C, H, W) format
+        images.append(img)
 
+        parts = file.stem.split("_")
+        label = {
+            "foam":      parts[parts.index("FOAM") + 1],
+            "bitumin":   parts[parts.index("BITUMEN") + 1],
+            "aluminium": parts[parts.index("AL") + 1],
+            "eps":       parts[parts.index("EPS") + 1],
+        }
+        labels.append(label)
+
+    data = np.array(images)
+    return data, labels
+
+def train(path):
+    pass
+
+def test(path):
+    pass
+
+def val(path):
+    pass
