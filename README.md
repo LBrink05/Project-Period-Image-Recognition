@@ -19,16 +19,16 @@ The program is split into 3 scripts, where the **input.py** script represents th
 ## VIDEO BATCHES
 We filmed these 10 batches, with 6 videos per batch, getting around 5-10 seconds per video.
 
-1. pirpur
-2. eps
-3. pirpural1
-4. pirpural2
-5. pirpurmixeverything
-6. pirpurbitumen
-7. pirpureps
-8. pirpurmoreal1
-9. pirpurmoreal2
-10. pirpurmorebitumen
+1. pirpur - control sample of pirpur
+2. eps - control sample of eps
+3. pirpural1 - mix of pirpur and aluminium (lighter foam)
+4. pirpural2 - mix of pirpur and aluminium (darker, more connected foam)
+5. pirpurmixeverything - mix of everything
+6. pirpurbitumen - mix of pirpur and bitumen
+7. pirpureps - mix of pirpur and eps
+8. pirpurmoreal1 - mix of pirpur and more aluminium (lighter foam)
+9. pirpurmoreal2 - mix of pirpur and more aluminium (darker, more connected foam)
+10. pirpurmorebitumen - mix of pirpur and more bitumen
 
 For the classifications we abided by these guidelines:
 Classification order is FOAM, BITUMEN, ALUMINIUM, EPS.
