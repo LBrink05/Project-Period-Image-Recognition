@@ -20,7 +20,7 @@ FINAL_PATH = Path("Data/final")
 
 ALLOWED_FLAGS = ["a","s","d","f"] #Much, Some, Little, None
 terminal_char_len = shutil.get_terminal_size(fallback=(80, 24)).columns
-center_crop_size = 384
+center_crop_size = 256
 
 def shutting_down(statement="", style=""):
     print(style + statement + Style.RESET_ALL)
@@ -143,7 +143,7 @@ def process_images():
                 new_width = new_height
 
             img = center_crop(img, new_width, new_height)
-            img = img.resize((384, 384))
+            img = img.resize((center_crop_size, center_crop_size))
 
             #generalize training set only (rotate, flip, mild color jitter, )
             #DO LATER
@@ -172,42 +172,43 @@ def process_images():
     shutting_down("Successfully processed Images!", Fore.GREEN)
 
 
+if __name__ == "__main__":
 
-#extracting image frames from videos
-while True:
-    query = input("Do you wish to extract images from videos? (y/n): ")
-    print("\n")
+    #extracting image frames from videos
+    while True:
+        query = input("Do you wish to extract images from videos? (y/n): ")
+        print("\n")
 
-    if query == 'yes' or query == 'y':
-        extract_images()
-        
-    elif query == 'no' or query == 'n':
-        break
-
-# Querying if image by image or whole video
-
-#classifying images manually 
-while True: 
-    query = input("Do you wish to classify images? (y/n): ")
-    print("\n")
-
-    if query == 'no' or query == 'n':
-        break
-
-    classify_images_vid()
-
+        if query == 'yes' or query == 'y':
+            extract_images()
             
-#processing images
-while True:
-    query = input("Do you wish to process the classified images? (y/n)")
-    print("\n")
+        elif query == 'no' or query == 'n':
+            break
 
-    if query == 'yes' or query == 'y':
-        process_images()
+    # Querying if image by image or whole video
 
-    elif query == 'no' or query == 'n':
-        break
+    #classifying images manually 
+    while True: 
+        query = input("Do you wish to classify images? (y/n): ")
+        print("\n")
+
+        if query == 'no' or query == 'n':
+            break
+
+        classify_images_vid()
+
+                
+    #processing images
+    while True:
+        query = input("Do you wish to process the classified images? (y/n)")
+        print("\n")
+
+        if query == 'yes' or query == 'y':
+            process_images()
+
+        elif query == 'no' or query == 'n':
+            break
 
 
-shutting_down("No task was selected.", Fore.RED)
+    shutting_down("No task was selected.", Fore.RED)
 
