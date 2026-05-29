@@ -14,7 +14,7 @@ class CNN:
 
         self.kernels_shape = (depth, self.input_depth, kernel_size, kernel_size)
         self.kernels = np.random.randn(depth, self.input_depth, kernel_size, kernel_size) * 0.1
-        self.biases = np.zeros((depth, 1, 1)) 
+        self.biases = np.zeros((depth, 1,1)) 
 
 
         self.output_height = self.input_height - kernel_size + 1
@@ -22,47 +22,47 @@ class CNN:
         self.output_shape = (depth, self.output_height, self.output_width) 
  
 
-  #  def forward(self, data): 
+    def forward(self, data): 
         self.input = data
         self.output = np.zeros(self.output_shape)
 
-    for filters in range(self.depth):
-        for colours in range (self.input_depth):
+        for filters in range(self.depth):
+         for colours in range (self.input_depth):
 
             cross_correlation = signal.correlate2d(data[colours], self.kernels[filters,colours], "valid")
-             self.output += cross_correlation 
+            self.output += cross_correlation 
         self.output += self.biases
         
 
 
-    return self.output
+        return self.output
 
 
 
 
-# def backward(self, output_gradient, learning_rate):
-    kernels_gradient = np.zeros(self.kernels_shape)  
-    input_gradient = np.zeros(self.input_shape)
+    def backward(self, output_gradient, learning_rate):
+        kernels_gradient = np.zeros(self.kernels_shape)  
+        input_gradient = np.zeros(self.input_shape)
+        
     
-   
-    for filters in range(self.depth):
-        for colours in range(self.input_depth):
-            kernels_gradient[filters, colours] = signal.correlate2d(
-                self.input[colours],
-                output_gradient[filters],
-                mode="valid"
-            )
-            input_gradient[colours] += signal.convolve2d(
-                output_gradient[filters],
-                self.kernels[filters, colours],
-                mode="full"
-            )
-    #this is where we update the weigths aka the modle learns
-    self.kernels -= learning_rate * kernels_gradient
-    bias_gradient = np.sum(output_gradient, axis=(1, 2), keepdims=True)   
-    self.biases -= learning_rate * bias_gradient.reshape(-1, 1)
-    
-    return input_gradient
+        for filters in range(self.depth):
+            for colours in range(self.input_depth):
+                kernels_gradient[filters, colours] = signal.correlate2d(
+                    self.input[colours],
+                    output_gradient[filters],
+                    mode="valid"
+                )
+                input_gradient[colours] += signal.convolve2d(
+                    output_gradient[filters],
+                    self.kernels[filters, colours],
+                    mode="full"
+                )
+        #this is where we update the weigths aka the modle learns
+        self.kernels -= learning_rate * kernels_gradient
+        bias_gradient = np.sum(output_gradient, axis=(1, 2), keepdims=True)   
+        self.biases -= learning_rate * bias_gradient.reshape(-1, 1)
+        
+        return input_gradient
 
 
 
@@ -152,7 +152,7 @@ class Activation:
 
 class Sigmoid:
     def __init__(self):
-        def sigmoid(x): return 1/(1+np.exp(-np.clip(x))
+        def sigmoid(x): return 1/(1+np.exp(-np.clip(x)))
         def sigmoid_prime(x): s=sigmoid(x); return s*(1-s)
         super().__init__(sigmoid, sigmoid_prime)
 
@@ -246,3 +246,7 @@ class MaxPooling:
                     ][mask] = output_gradient[c, i, j]
         
         return input_gradient
+    
+
+
+
