@@ -15,3 +15,27 @@ Data leaks are expected with minimal footage, but limited with p-hashing to avoi
 The images will be extracted from videos, classified and distributed to the training, testing and validations subsets using **dataset.py**.
 The program is split into 3 scripts, where the **input.py** script represents the user-interface and **cnn.py** is the main working part of the program. The user-interface is loading the dataset whilst the convolutional neural-network handles the machine learning required to identify the state of the belt's contents.
 
+
+## Videos classes
+1. pirpur
+2. eps
+3. pirpural1
+4. pirpural2
+5. pirpurmixeverything
+6. pirpurbitumen
+7. pirpureps
+8. pirpurmoreal1
+9. pirpurmoreal2
+10. pirpurmorebitumen
+We filmed these 10 batches, with 6 videos per batch, getting around 5-10 seconds per video.
+
+for the different batches: 
+for pirpur control is HIGH NONE NONE NONE, 
+for eps control is NONE NONE NONE HIGH, 
+for pirpur al1 is MEDIUM NONE LOW NONE 
+for pirpur al2 is MEDIUM, NONE, LOW, NONE,
+for pirpurmixeverything varies so please judge yourself, 
+for pirpurbitumin is MEDIUM LOW NONE NONE 
+for pirpureps is MEDIUM NONE NONE MEDIUM,
+for pirpurmoreal1 and for pirpurmoreal2 judge yourself, 
+for pirpurmorebitumin Is MEDIUM MEDIUM NONE NONE
