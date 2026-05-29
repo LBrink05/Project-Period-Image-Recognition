@@ -31,7 +31,7 @@ Classification order is FOAM, BITUMEN, ALUMINIUM, EPS.
 pirpur: HIGH NONE NONE NONE, 
 eps: NONE NONE NONE HIGH, 
 pirpural1: MEDIUM NONE LOW NONE 
-pirpural2: MEDIUM, NONE, LOW, NONE,
+pirpural2: MEDIUM NONE LOW NONE,
 pirpurmixeverything judge yourself, 
 pirpurbitumen: MEDIUM LOW NONE NONE 
 pirpureps: MEDIUM NONE NONE MEDIUM,
