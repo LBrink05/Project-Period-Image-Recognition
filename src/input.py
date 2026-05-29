@@ -11,6 +11,7 @@ import sys
 import cnn
 import output
 
+ALL_PATH = Path("Data/final/all")
 TRAINING_PATH = Path("Data/final/training")
 TESTING_PATH = Path("Data/final/testing")
 VALIDATING_PATH = Path("Data/final/validating")
@@ -28,19 +29,19 @@ def shutting_down(statement="", style=""):
 def train():
     print("\n[Training]")
     print(Fore.GREEN + "Training started...\n" + Style.RESET_ALL)
-    cnn.train(TRAINING_PATH)
+    cnn.train(ALL_PATH,TRAINING_PATH)
     print(Fore.GREEN + "Training successfully completed.\n" + Style.RESET_ALL)
 
 def test():
     print("\n[Testing]")
     print(Fore.GREEN + "Testing started...\n" + Style.RESET_ALL)
-    cnn.test(TESTING_PATH)
+    cnn.test(ALL_PATH, TESTING_PATH)
     print(Fore.GREEN + "Testing successfully completed.\n" + Style.RESET_ALL)
 
 def validate():
     print("\n[Validating]")
     print(Fore.GREEN + "Validating started...\n" + Style.RESET_ALL)
-    cnn.val(VALIDATING_PATH)
+    cnn.val(ALL_PATH, VALIDATING_PATH)
     print(Fore.GREEN + "Validating successfully completed.\n" + Style.RESET_ALL)
 
 def menu():

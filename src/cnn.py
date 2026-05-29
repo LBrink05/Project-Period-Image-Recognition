@@ -1,6 +1,11 @@
 import numpy as np
+import os
+import math
 from scipy import signal 
 from pathlib import Path 
+import cv2
+
+BATCHSIZE = 50 #size of batch of images
 
 
 # 1. CNN class(forward+backward)
@@ -248,9 +253,10 @@ class MaxPooling:
     
 
 
-def load_dataset(folder: Path, batchsize, batchindex):
+def load_batch(path, batch, BATCHSIZE):
+
     images, labels = [], []
-    for file in sorted(folder.glob("*.jpg")):
+    for file in sorted(path.glob("*.jpg"))[batch:BATCHSIZE * (1 + batch)]:
         img = cv2.imread(str(file))
         img = np.array(img, dtype=np.float32) / 255.0  # Normalize to [0, 1]
         img = img.transpose(2, 0, 1)  # Change to (C, H, W) format
@@ -266,13 +272,30 @@ def load_dataset(folder: Path, batchsize, batchindex):
         labels.append(label)
 
     data = np.array(images)
+
+    print(f"Loaded batch: {batch}# from {path}.")
     return data, labels
 
-def train(path):
-    pass
+def count_batches(all_path):
+    imgnum: float = sum(1 for file in os.listdir(all_path) if file.endswith('.jpg'))
+    batchnum = int(math.ceil(imgnum / float(BATCHSIZE)))
+    print(f"There are {batchnum}# batches in this dataset.\n")
+    return batchnum
 
-def test(path):
-    pass
+def train(all_path, training_path):
+    batchnum = count_batches(all_path)
+    for batch in range(0, batchnum):
+        data, labels = load_batch(training_path, batch, BATCHSIZE)
+        pass
 
-def val(path):
-    pass
+def test(all_path, testing_path):
+    batchnum = count_batches(all_path)
+    for batch in range(0, batchnum):
+        data, labels = load_batch(testing_path, batch, BATCHSIZE)
+        pass
+
+def val(all_path, validating_path):
+    batchnum = count_batches(all_path)
+    for batch in range(0,batchnum):
+        data, labels = load_batch(validating_path, batch, BATCHSIZE)
+        pass
