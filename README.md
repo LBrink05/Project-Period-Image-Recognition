@@ -16,7 +16,9 @@ The images will be extracted from videos, classified and distributed to the trai
 The program is split into 3 scripts, where the **input.py** script represents the user-interface and **cnn.py** is the main working part of the program. The user-interface is loading the dataset whilst the convolutional neural-network handles the machine learning required to identify the state of the belt's contents.
 
 
-## Videos classes
+## VIDEO BATCHES
+We filmed these 10 batches, with 6 videos per batch, getting around 5-10 seconds per video.
+
 1. pirpur
 2. eps
 3. pirpural1
@@ -27,15 +29,16 @@ The program is split into 3 scripts, where the **input.py** script represents th
 8. pirpurmoreal1
 9. pirpurmoreal2
 10. pirpurmorebitumen
-We filmed these 10 batches, with 6 videos per batch, getting around 5-10 seconds per video.
 
-for the different batches: 
-for pirpur control is HIGH NONE NONE NONE, 
-for eps control is NONE NONE NONE HIGH, 
-for pirpur al1 is MEDIUM NONE LOW NONE 
-for pirpur al2 is MEDIUM, NONE, LOW, NONE,
-for pirpurmixeverything varies so please judge yourself, 
-for pirpurbitumin is MEDIUM LOW NONE NONE 
-for pirpureps is MEDIUM NONE NONE MEDIUM,
-for pirpurmoreal1 and for pirpurmoreal2 judge yourself, 
-for pirpurmorebitumin Is MEDIUM MEDIUM NONE NONE
+For the classifications we abided by these guidelines:
+Classification order is FOAM, BITUMEN, ALUMINIUM, EPS.
+
+pirpur: HIGH NONE NONE NONE, 
+eps: NONE NONE NONE HIGH, 
+pirpural1: MEDIUM NONE LOW NONE 
+pirpural2: MEDIUM, NONE, LOW, NONE,
+pirpurmixeverything judge yourself, 
+pirpurbitumen: MEDIUM LOW NONE NONE 
+pirpureps: MEDIUM NONE NONE MEDIUM,
+pirpurmoreal1 and pirpurmoreal2 judge yourself, 
+pirpurmorebitumen: MEDIUM MEDIUM NONE NONE
