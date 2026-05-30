@@ -10,6 +10,7 @@ import dataset
 import matplotlib.pyplot as plt
 import time
 import output
+from collections import defaultdict
 
 center_crop_size = 128
 BATCHSIZE = 50                                           # images per batch
@@ -43,7 +44,7 @@ class Convolutional:
         self.output_shape = (depth, self.output_height, self.output_width)
 
     def forward(self, data): 
-        #start = time.time()                     
+                   
         self.input = data
         N = data.shape[0]
         C, k = self.input_depth, self.kernel_size
@@ -56,13 +57,11 @@ class Convolutional:
         out = W_row @ self.cols
         self.output = out.reshape(N, self.depth, oh, ow) + self.biases
 
-        #end = time.time()
-        #forward_time = end - start
-        #print(f"conv forward_time: {forward_time}")
+
         return self.output
 
     def backward(self, output_gradient, learning_rate):
-        #start = time.time()
+        
         N = output_gradient.shape[0]
         dY = output_gradient.reshape(N, self.depth, -1)      
 
@@ -72,9 +71,6 @@ class Convolutional:
 
         self.kernels -= learning_rate * kernels_gradient
         self.biases  -= learning_rate * bias_gradient
-        #end = time.time()
-        #backward_time = end - start
-        #print(f"conv backward_time: {backward_time}")
         return None                                # first layer -> input grad discarded
 
 
@@ -124,38 +120,29 @@ class ReLU:
 
 
 class MaxPooling:
-
     def __init__(self, pool_size=2, stride=2):
         self.pool_size = pool_size
         self.stride = stride
 
-    def forward(self, data):                      
+    def forward(self, data):
         self.in_shape = data.shape
         N, C, H, W = data.shape
         p = self.pool_size
         oh, ow = H // p, W // p
-
-       
-        x = data[:, :, :oh * p, :ow * p].reshape(N, C, oh, p, ow, p)
-        x = x.transpose(0, 1, 2, 4, 3, 5).reshape(N, C, oh, ow, p * p)
-        self.argmax = x.argmax(axis=4)             
-        return x.max(axis=4)                      
+        base = data[:, :, :oh * p, :ow * p]
+        cells = np.stack([base[:, :, i::p, j::p] for i in range(p) for j in range(p)], axis=0)
+        self.argmax = cells.argmax(axis=0).astype(np.uint8) 
+        return cells.max(axis=0)
 
     def backward(self, output_gradient, learning_rate=None):
         N, C, H, W = self.in_shape
         p = self.pool_size
         oh, ow = H // p, W // p
-
-        dx = np.zeros((N, C, oh, ow, p * p), dtype=output_gradient.dtype)
-        nn, cc, ii, jj = np.indices((N, C, oh, ow))
-        dx[nn, cc, ii, jj, self.argmax] = output_gradient        
-
-        dx = dx.reshape(N, C, oh, ow, p, p).transpose(0, 1, 2, 4, 3, 5)
-        dx = dx.reshape(N, C, oh * p, ow * p)
         input_gradient = np.zeros(self.in_shape, dtype=output_gradient.dtype)
-        input_gradient[:, :, :oh * p, :ow * p] = dx
+        for k in range(p * p):
+            i, j = divmod(k, p)
+            input_gradient[:, :, i:oh * p:p, j:ow * p:p] = output_gradient * (self.argmax == k)
         return input_gradient
-
 
 class GroupedSoftmax:
 
@@ -319,6 +306,8 @@ def train(training_path, network, epochs=50, learning_rate=0.001, batch_size=BAT
     head_acc_list = []
     avg_loss_list =[]
 
+    timediagnostic = 0
+
     query = input("Do you wish to train on a single batch? (y/n)")
     if query == 'y' or query == 'yes':
         sel = np.random.choice(N, batch_size, replace=False)                   
@@ -328,6 +317,8 @@ def train(training_path, network, epochs=50, learning_rate=0.001, batch_size=BAT
         idx = np.arange(N)
         print(f"Single-batch mode: training on {N} images.")
 
+    print(Fore.YELLOW + "Beginning training...\n" + Style.RESET_ALL)
+
     for epoch in range(epochs):
         np.random.shuffle(idx)                      
         running_loss = 0.0
@@ -336,27 +327,46 @@ def train(training_path, network, epochs=50, learning_rate=0.001, batch_size=BAT
 
         for start in range(0, N, batch_size):
             sel = idx[start:start + batch_size]
-            xb = data[sel]                          
-            yb = encode_labels([labels[i] for i in sel])   
+            xb = data[sel]
+            yb = encode_labels([labels[i] for i in sel])
 
-            out = predict(network, xb)               
+            timediagnostic += 1
+            diag = (timediagnostic == 10)
+
+            if diag:
+                fwd_t, bwd_t = defaultdict(float), defaultdict(float)
+                out = xb
+                for layer in network:
+                    t = time.perf_counter()
+                    out = layer.forward(out)
+                    fwd_t[type(layer).__name__] += time.perf_counter() - t
+            else:
+                out = predict(network, xb)
+
             running_loss += cce(yb, out)
-
-          
-            pred_idx = out.reshape(nm, nc, -1).argmax(axis=1)  
+            pred_idx = out.reshape(nm, nc, -1).argmax(axis=1)
             true_idx = yb.reshape(nm, nc, -1).argmax(axis=1)
             correct_heads += int((pred_idx == true_idx).sum())
             seen += nm * xb.shape[0]
 
             grad = cce_prime(yb, out)
-            for layer in reversed(network):
-                grad = layer.backward(grad, learning_rate)
+            if diag:
+                for layer in reversed(network):
+                    t = time.perf_counter()
+                    grad = layer.backward(grad, learning_rate)
+                    bwd_t[type(layer).__name__] += time.perf_counter() - t
+                print("Warm-batch (10th) diagnostics:")
+                print("forward :", dict(fwd_t))
+                print("backward:", dict(bwd_t))
+            else:
+                for layer in reversed(network):
+                    grad = layer.backward(grad, learning_rate)
 
         avg_loss = running_loss / max(N, 1)
         head_acc = correct_heads / max(seen, 1)
-
-        print(f"epoch {epoch + 1}/{epochs}  avg loss {avg_loss:.3f}  head accuracy {head_acc:.3f}")
-
+        
+        print(f"Epoch {epoch + 1}/{epochs}  Avg Loss {avg_loss:.3f}  Head Accuracy {head_acc:.3f}")
+        #TODO PUT VALIDATION TEST AFTER EACH EPOCH TO PREVENT OVERFITTING, HAVE TEST AND VALIDATION BE DIFFERENT FOOTAGE
         head_acc_list.append(head_acc)
         avg_loss_list.append(avg_loss)
 
