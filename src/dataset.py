@@ -20,7 +20,7 @@ FINAL_PATH = Path("Data/final")
 
 ALLOWED_FLAGS = ["a","s","d","f"] #Much, Some, Little, None
 terminal_char_len = shutil.get_terminal_size(fallback=(80, 24)).columns
-center_crop_size = 256
+center_crop_size = 128
 
 def shutting_down(statement="", style=""):
     print(style + statement + Style.RESET_ALL)
