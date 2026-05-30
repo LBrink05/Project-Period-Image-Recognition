@@ -29,7 +29,7 @@ def shutting_down(statement="", style=""):
     sys.exit()
     
 def extract_labels(camid, videoid):
-    # Expecting: cam0_videoname_foam_bitumen_aluminium_eps.mp4
+    # Expecting: cam0_videoname_#_foam_bitumen_aluminium_eps.mp4
     matches = list(RAW_DATA_PATH.rglob(f'{camid}_{videoid}_*.mp4'))
     if not matches:
         raise FileNotFoundError(f"No video found for {camid}_{videoid}")
@@ -37,17 +37,17 @@ def extract_labels(camid, videoid):
         raise ValueError(f"Multiple videos match {camid}_{videoid}: {matches}")
 
     parts = matches[0].stem.split('_')
-    if len(parts) < 6:
+    if len(parts) < 7:
         raise ValueError(f"Unexpected filename format: {matches[0].name}")
 
-    foam, bitumen, aluminium, eps = parts[2], parts[3], parts[4], parts[5]
+    foam, bitumen, aluminium, eps = parts[3], parts[4], parts[5], parts[6]
     return foam, bitumen, aluminium, eps
 
 def extract_images():
     for file in RAW_DATA_PATH.rglob('*.mp4'):
         if file.is_file():
             frameid = 0
-            videoid = file.stem.split('_')[1]
+            videoid = file.stem.split('_')[1] + '_' +  file.stem.split('_')[2]
             camid = file.stem.split('_')[0]
             video = cv2.VideoCapture(file)
             recent_hashes = deque(maxlen=5)
@@ -93,7 +93,8 @@ def classify_images_vid():
 
             img = mpimg.imread(file)
 
-            camid, videoid, frameid =  file.stem.split('_')
+            camid, sampleid, videonum, frameid =  file.stem.split('_')
+            videoid = sampleid + '_' + videonum
             
             foam_flag, bitumen_flag, aluminium_flag, eps_flag = extract_labels(camid, videoid)
 
@@ -151,22 +152,40 @@ def process_images():
             img.save(imgpath + file.name)
     
 
-    #randomly selecting from all and putting it into the other folders
 
-    for file in Path(imgpath).glob('*.jpg'):
-        value = random.random()
-        if value < 0.1:
-            #testing
-            shutil.copy(file, str(FINAL_PATH) + folders[2])
-        else:
-            #training
-            shutil.copy(file, str(FINAL_PATH) + folders[3])
-    
-    for file in Path(str(FINAL_PATH) + folders[3]).glob('*.jpg'):
-        value = random.random()
-        if value < 0.1:
-            #validation
-            shutil.copy(file, str(FINAL_PATH) + folders[1])
+    #randomly selecting footage for each sample to be training, testing or validating
+    samples = ["pirpur", "eps", "pirpural1", "pirpural2", "pirpurmixeverything", "pirpurbitumen", "pirpureps", "pirpurmoreal1", "pirpurmoreal2", "pirpurmorebitumen"]
+
+    for sample in samples:
+        videos = [] #videos of sample
+        test_videos = []
+        val_videos = []
+        for file in RAW_DATA_PATH.rglob('*.mp4'):
+            if file.name.split('_')[1] == sample:
+                videos.append(file.name.split('_')[2]) #collect video # ids
+
+        required_testing = 1
+        required_val = 1
+        
+        for element in range(0,required_testing):
+            if element < len(videos) - 1:
+                index = random.randrange(len(videos)); test_videos.append(videos[index]); del videos[index]
+        for element in range(0,required_val):
+            if element < len(videos) - 1:
+                index = random.randrange(len(videos)); val_videos.append(videos[index]); del videos[index]
+
+        for file in Path(imgpath).glob('*.jpg'):
+            if file.name.split('_')[1] == sample:
+                index = file.name.split('_')[2]
+                if index in test_videos:
+                    shutil.copy(file, str(FINAL_PATH) + folders[2])
+                    testing_empty = False
+                elif index in val_videos:
+                    shutil.copy(file, str(FINAL_PATH) + folders[1])
+                    validating_empty = False
+                else:
+                    shutil.copy(file, str(FINAL_PATH) + folders[3])
+
 
     
     shutting_down("Successfully processed Images!", Fore.GREEN)
