@@ -7,6 +7,9 @@ import pickle
 import random
 from colorama import Fore, Style, Back
 import dataset
+import matplotlib.pyplot as plt
+import time
+import output
 
 center_crop_size = 128
 BATCHSIZE = 50                                           # images per batch
@@ -39,7 +42,8 @@ class Convolutional:
         self.output_width = self.input_width - kernel_size + 1
         self.output_shape = (depth, self.output_height, self.output_width)
 
-    def forward(self, data):                      
+    def forward(self, data): 
+        #start = time.time()                     
         self.input = data
         N = data.shape[0]
         C, k = self.input_depth, self.kernel_size
@@ -49,20 +53,28 @@ class Convolutional:
         self.cols = windows.transpose(0, 1, 4, 5, 2, 3).reshape(N, C * k * k, oh * ow)
 
         W_row = self.kernels.reshape(self.depth, C * k * k)     
-        out = np.einsum('fk,nkp->nfp', W_row, self.cols)
+        out = W_row @ self.cols
         self.output = out.reshape(N, self.depth, oh, ow) + self.biases
+
+        #end = time.time()
+        #forward_time = end - start
+        #print(f"conv forward_time: {forward_time}")
         return self.output
 
     def backward(self, output_gradient, learning_rate):
+        #start = time.time()
         N = output_gradient.shape[0]
         dY = output_gradient.reshape(N, self.depth, -1)      
 
-        kernels_gradient = np.einsum('nfp,nkp->fk', dY, self.cols)
+        kernels_gradient = np.matmul(dY, self.cols.transpose(0, 2, 1)).sum(axis=0)
         kernels_gradient = kernels_gradient.reshape(self.kernels_shape) / N
         bias_gradient = dY.sum(axis=(0, 2)).reshape(self.depth, 1, 1) / N
 
         self.kernels -= learning_rate * kernels_gradient
         self.biases  -= learning_rate * bias_gradient
+        #end = time.time()
+        #backward_time = end - start
+        #print(f"conv backward_time: {backward_time}")
         return None                                # first layer -> input grad discarded
 
 
@@ -297,11 +309,24 @@ def show_random_image(network, path, set_name):
     return pred
 
 
-def train(training_path, network, epochs=10, learning_rate=0.01, batch_size=BATCHSIZE):
+def train(training_path, network, epochs=50, learning_rate=0.001, batch_size=BATCHSIZE):
+
     data, labels = load_dataset(training_path)
     N = len(data)
     nm, nc = len(MATERIALS), len(CLASSES)
     idx = np.arange(N)
+
+    head_acc_list = []
+    avg_loss_list =[]
+
+    query = input("Do you wish to train on a single batch? (y/n)")
+    if query == 'y' or query == 'yes':
+        sel = np.random.choice(N, batch_size, replace=False)                   
+        data = data[sel]                            
+        labels = [labels[i] for i in sel]          
+        N = len(data)                              
+        idx = np.arange(N)
+        print(f"Single-batch mode: training on {N} images.")
 
     for epoch in range(epochs):
         np.random.shuffle(idx)                      
@@ -329,7 +354,16 @@ def train(training_path, network, epochs=10, learning_rate=0.01, batch_size=BATC
 
         avg_loss = running_loss / max(N, 1)
         head_acc = correct_heads / max(seen, 1)
+
         print(f"epoch {epoch + 1}/{epochs}  avg loss {avg_loss:.3f}  head accuracy {head_acc:.3f}")
+
+        head_acc_list.append(head_acc)
+        avg_loss_list.append(avg_loss)
+
+    query = input("Do you wish to see the training diagontics? (y/n)")
+    if query == 'y' or query == 'yes':
+        output.show_training(epochs, head_acc_list, avg_loss_list)
+        
 
     return network
 
@@ -353,7 +387,7 @@ def save_network(network, path="model.pkl"):
             params.append(None)
     with open(path, "wb") as f:
         pickle.dump(params, f)
-    print(Fore.GREEN + "Successfully saved model to {path}." + Style.RESET_ALL)
+    print(Fore.GREEN + f"Successfully saved model to {path}." + Style.RESET_ALL)
 
 
 def load_network(path="model.pkl"):
