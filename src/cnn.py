@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import time
 import output
 from collections import defaultdict
+import shutil
 
 center_crop_size = 128
 BATCHSIZE = 50                                           # images per batch
@@ -21,6 +22,8 @@ DEPTH      = 32                                          # number of conv filter
 
 CLASSES   = ["NONE", "LOW", "MEDIUM", "HIGH"]
 MATERIALS = ["foam", "bitumen", "aluminium", "eps"]
+
+terminal_char_len = shutil.get_terminal_size(fallback=(80, 24)).columns
 
 # Convention: spatial tensors are (N, C, H, W); the flattened activations that
 # flow through Dense / Softmax are (features, N) so the Dense weight matrix
@@ -293,18 +296,20 @@ def show_random_image(network, path, set_name):
 
     loss = cce(encode_label(true), output)
     print(f"loss: {loss:.3f}   |   correct heads: {correct}/{len(MATERIALS)}")
-    return pred
+    return correct, loss
 
 
-def train(training_path, network, epochs=50, learning_rate=0.001, batch_size=BATCHSIZE):
-
+def train(training_path, validating_path, network, epochs=50, learning_rate=0.0005, batch_size=BATCHSIZE):
+    val_data, val_labels = load_dataset(validating_path)
     data, labels = load_dataset(training_path)
     N = len(data)
     nm, nc = len(MATERIALS), len(CLASSES)
     idx = np.arange(N)
 
     head_acc_list = []
-    avg_loss_list =[]
+    avg_loss_list = []
+    val_correct_list = []
+    val_loss_list = []
 
     timediagnostic = 0
 
@@ -366,13 +371,19 @@ def train(training_path, network, epochs=50, learning_rate=0.001, batch_size=BAT
         head_acc = correct_heads / max(seen, 1)
         
         print(f"Epoch {epoch + 1}/{epochs}  Avg Loss {avg_loss:.3f}  Head Accuracy {head_acc:.3f}")
-        #TODO PUT VALIDATION TEST AFTER EACH EPOCH TO PREVENT OVERFITTING, HAVE TEST AND VALIDATION BE DIFFERENT FOOTAGE
+        
         head_acc_list.append(head_acc)
         avg_loss_list.append(avg_loss)
 
+        #Validation test every 
+        val_correct, val_loss = validate(network, val_data, val_labels)
+
+        val_correct_list.append(val_correct)
+        val_loss_list.append(val_loss)
+
     query = input("Do you wish to see the training diagontics? (y/n)")
     if query == 'y' or query == 'yes':
-        output.show_training(epochs, head_acc_list, avg_loss_list)
+        output.show_training(epochs, head_acc_list, avg_loss_list, val_correct_list, val_loss_list)
         
 
     return network
@@ -381,10 +392,29 @@ def train(training_path, network, epochs=50, learning_rate=0.001, batch_size=BAT
 def test(testing_path, network):
     show_random_image(network, testing_path, "test")
 
+def validate(network, val_data, val_labels):
+    i = random.randrange(len(val_data))
+    image, true = val_data[i], val_labels[i]
+    
+    output = predict(network, image[None])         
+    probs = output.reshape(len(MATERIALS), len(CLASSES))
+    pred = decode_prediction(output)
 
-def val(validating_path, network):
-    show_random_image(network, validating_path, "validation")
+    print(f"\n=== Random validation {true} image ===")
+    print(f"{'material':<11}{'predicted':<9}{'true':<9}" + "".join(f"{c:>8}" for c in CLASSES))
 
+    correct = 0
+    for m, material in enumerate(MATERIALS):
+        true_val = str(true[material]).upper()
+        if pred[material] == true_val:
+            correct += 1
+        row = "".join(f"{probs[m, c]:>8.2f}" for c in range(len(CLASSES)))
+        print(f"{material:<11}{pred[material]:<9}{true_val:<9}{row}")
+
+    loss = cce(encode_label(true), output)
+    print(f"loss: {loss:.3f}   |   correct heads: {correct}/{len(MATERIALS)}")
+    print("%"*terminal_char_len)
+    return correct, loss
 
 def save_network(network, path="model.pkl"):
     params = []

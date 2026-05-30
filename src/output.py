@@ -1,15 +1,21 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-def show_training(epochs, head_acc_list, avg_loss_list):
+def show_training(epochs, head_acc_list, avg_loss_list, val_correct_list, val_loss_list):
     print("Showing training diagnostics.")
-    fig, ax = plt.subplots(1,2)
+    fig, ax = plt.subplots(1,4)
     
     x = np.arange(0, epochs)
     y1 = avg_loss_list
     y2 = head_acc_list
+
+    y3 = val_loss_list
+    y4 = val_correct_list
+
     ax[0].plot(x, y1, color='orange'); ax[0].set_title("Average Loss"); ax[0].set_xlabel("Epochs")
     ax[1].plot(x, y2, color='blue'); ax[1].set_title("Head Accuracy"); ax[1].set_xlabel("Epochs")
+    ax[2].plot(x, y3, color='green'); ax[2].set_title("Loss (Validation)"); ax[2].set_xlabel("Epochs")
+    ax[3].plot(x, y4, color='purple'); ax[3].set_title("Head Accuracy (Validation)"); ax[3].set_xlabel("Epochs")
 
     plt.show()
 
