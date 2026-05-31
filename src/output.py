@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import seaborn as sn
 
 def show_training(epochs, head_acc_list, avg_loss_list, val_correct_list, val_loss_list):
     print("Showing training diagnostics.")
@@ -20,5 +21,14 @@ def show_training(epochs, head_acc_list, avg_loss_list, val_correct_list, val_lo
     plt.show()
 
 
-def confusion_matrices():
-    pass
+def confusion_matrices(cms, MATERIALS, CLASSES):
+    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+    ax = axes.ravel()
+
+    fig.suptitle("Confusion Matrices of Materials\n (rows are labels, columns are predicted)")
+
+    for m, mat in enumerate(MATERIALS):
+        sn.heatmap(cms[m], ax=ax[m], xticklabels=CLASSES, yticklabels=CLASSES,) 
+        ax[m].set_title(f"Confusion Matrix of {mat.capitalize()}")
+
+    plt.show()

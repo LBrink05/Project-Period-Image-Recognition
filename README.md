@@ -39,8 +39,28 @@ pirpurmoreal1 and pirpurmoreal2 judge yourself,
 pirpurmorebitumen: MEDIUM MEDIUM NONE NONE
 
 ## PROGRAM STRUCTURE
-The images will be extracted from videos, classified and distributed to the training, testing and validations subsets using **dataset.py**.
-The program is split into 3 scripts, where the **input.py** script represents the user-interface and **cnn.py** is the main working part of the program. The user-interface is loading the dataset whilst the convolutional neural-network handles the machine learning required to identify the state of the belt's contents.
+The program is split into 4 scripts. Images will be extracted from videos, classified and distributed to the training, testing and validations subsets using **dataset.py**.
+The **input.py** script represents the user-interface and **cnn.py** is the main working part of the program. The user-interface is loading the dataset whilst the convolutional neural-network handles the machine learning required to identify the state of the belt's contents. **output.py** deals with the graphical illustrations of the results computed by the neural network.
 
+## NEURAL NETWORK STRUCTURE
 
+The network is a multiheaded convolutional network trained using mini-batches of 50 images at a learning rate of 0.0005 for 50 epochs.
 
+It consists of these layers: Conv -> ReLU -> MaxPool -> Conv -> ReLu -> MaxPool -> Dense -> GroupedSoftMax
+
+What the Layers do:
+- Convolutional Layer extracts features using valid convolution 
+- ReLU (Rectified Linear Unit) activation layer transforms features (clamps negative to 0)
+- MaxPool reduces the amount of values within an image of features by compressing it by taking the max value within a window which slides across the image.
+- Dense layer computes scores for every option i.e. Foam: Medium etc. (called logits)
+- GroupedSoftMax applies softmax function to every material independently (4 independent softmax classifiers)
+
+## TODO
+Take videos of samples IMPORTANT:
+
+  - foam = LOW
+  - bitumen = HIGH
+  - aluminium = HIGH
+  - eps = LOW
+  - bitumen = MEDIUM 
+  - eps = MEDIUM 

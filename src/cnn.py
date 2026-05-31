@@ -424,7 +424,7 @@ def test(testing_path, network, batch_size=BATCHSIZE):
 
     data, labels = load_dataset(testing_path)
 
-    query = input("Do you wish to compute confusion matrices? (y/n)")
+    query = input("Do you wish to compute confusion matrices? (y/n): ")
 
     if query == 'y' or query == 'yes':
 
@@ -464,7 +464,7 @@ def test(testing_path, network, batch_size=BATCHSIZE):
                 print(f"{CLASSES[t]:>8}" + "".join(f"{cms[m][t, p]:>8}" for p in range(nc)))
 
 
-        output.confusion_matrices()
+        output.confusion_matrices(cms, MATERIALS, CLASSES)
 
 def validate(network, val_data, val_labels, batch_size=BATCHSIZE):
     nm, nc = len(MATERIALS), len(CLASSES)
@@ -480,7 +480,7 @@ def validate(network, val_data, val_labels, batch_size=BATCHSIZE):
         total_correct += int((pred_idx == true_idx).sum())
     avg_loss = total_loss / N
     avg_correct = total_correct / N                      # avg correct heads per image (0–4)
-    print(f"Avg val Loss: {avg_loss:.3f}   |   Avg val correct heads: {avg_correct:.2f}/{nm}")
+    print(f"Avg val Loss: {avg_loss:.3f}   |   Avg val correct heads: {avg_correct / nm}")
     print("."*terminal_char_len)
     return avg_correct, avg_loss
 
@@ -502,8 +502,10 @@ def load_network(network, model="best_model_*"):
 
     matches = sorted(Path(".").glob(model))
     if not matches:
-        print("Failed to find model file. Model unchanged.")
-        return network 
+        print(Fore.RED + "Failed to find model file. Model unchanged!" + Style.RESET_ALL)
+        return network
+    else:
+        print(Fore.GREEN + f"Found model file {model}" + Style.RESET_ALL)
 
     network = build_network()
     path = matches[-1]   

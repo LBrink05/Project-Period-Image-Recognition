@@ -50,15 +50,18 @@ def start_loading_model(network):
         cnn.load_network(network, query)
     else:
         cnn.load_network(network)
+        
     print(Fore.GREEN + "Loaded model successfully." + Style.RESET_ALL)
 
-def start_save_model():
+def start_save_model(network):
     query = input("What would you like to name the model? (Empty = model.pkl): ")
     if query != "":
-        cnn.save_network(query)
+        cnn.save_network(network, query)
+        print(Fore.GREEN + f"Successfully saved model {query}." + Style.RESET_ALL)
     else:
-        cnn.save_network()
-    print(Fore.GREEN + f"Successfully saved model to {path}." + Style.RESET_ALL)
+        cnn.save_network(network)
+        print(Fore.GREEN + f"Successfully saved model.pkl" + Style.RESET_ALL)
+    
 
 def menu():
     print("-"*terminal_char_len)
@@ -88,7 +91,7 @@ def main():
         elif choice == "3":
             start_validate(network)
         elif choice == "4":
-            start_save_model()
+            start_save_model(network)
         elif choice == "5":
             start_loading_model(network)
         elif choice == "6":
