@@ -18,6 +18,7 @@ def show_training(epochs, head_acc_list, avg_loss_list, val_correct_list, val_lo
     ax[2].plot(x, y3, color='green'); ax[2].set_title("Average Loss (Validation)"); ax[2].set_xlabel("Epochs")
     ax[3].plot(x, y4, color='purple'); ax[3].set_title("Head Accuracy (Validation)"); ax[3].set_xlabel("Epochs")
 
+    plt.savefig("Graphs/Training_Stats.png")
     plt.show()
 
 
