@@ -44,6 +44,22 @@ def start_validate(network):
     cnn.val(VALIDATING_PATH, network)
     print(Fore.GREEN + "Validating successfully completed.\n" + Style.RESET_ALL)
 
+def start_loading_model(network):
+    query = input("Which model would you like to load? (Empty = best_model_*.pkl): ")
+    if query != "":
+        cnn.load_network(network, query)
+    else:
+        cnn.load_network(network)
+    print(Fore.GREEN + "Loaded model successfully." + Style.RESET_ALL)
+
+def start_save_model():
+    query = input("What would you like to name the model? (Empty = model.pkl): ")
+    if query != "":
+        cnn.save_network(query)
+    else:
+        cnn.save_network()
+    print(Fore.GREEN + f"Successfully saved model to {path}." + Style.RESET_ALL)
+
 def menu():
     print("-"*terminal_char_len)
     print("PRO357 - Giving Machines Vision Using Machine Learning")
@@ -72,9 +88,9 @@ def main():
         elif choice == "3":
             start_validate(network)
         elif choice == "4":
-            cnn.save_network(network)
+            start_save_model()
         elif choice == "5":
-            cnn.load_network()
+            start_loading_model(network)
         elif choice == "6":
             shutting_down("Exiting program :)", Fore.YELLOW)
             break

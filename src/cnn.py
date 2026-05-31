@@ -172,8 +172,17 @@ def cce(y_true, y_pred):
     return -np.sum(y_true * np.log(y_pred + 1e-9))
 
 
-def cce_prime(y_true, y_pred):
-    return y_pred - y_true
+# from TRAINING labels, count per (material, class):
+counts = encode_labels(train_labels).reshape(nm, nc, -1).sum(axis=2)   # (nm, nc)
+weights = counts.sum(axis=1, keepdims=True) / (nc * np.maximum(counts, 1))  # inverse-freq, (nm, nc)
+
+def cce_prime(y_true, y_pred, weights=None):
+    g = y_pred - y_true
+    if weights is not None:
+        nm, nc = weights.shape
+        per_head_w = (y_true.reshape(nm, nc, -1) * weights[:, :, None]).sum(axis=1)  # true-class weight, (nm, N)
+        g = g * np.repeat(per_head_w, nc, axis=0)                                    # scale each head block
+    return g
 
 
 #--------------------------- Model----------------------------------#
@@ -271,6 +280,15 @@ def count_batches(path):
 
 # ----------------- Train / Test / Validate --------------------------------#
 
+def augment(batch):                       
+    out = batch.copy()
+    N = out.shape[0]
+    flip = np.random.rand(N) < 0.5        
+    out[flip] = out[flip, :, :, ::-1]
+    out *= np.random.uniform(0.9, 1.1, size=(N, 1, 1, 1)).astype(out.dtype) 
+    return np.clip(out, 0.0, 1.0)
+
+
 def show_random_image(network, path, set_name):
     n_batches = count_batches(path)
     batch = random.randrange(n_batches)
@@ -306,6 +324,8 @@ def train(training_path, validating_path, network, epochs=50, learning_rate=0.00
     nm, nc = len(MATERIALS), len(CLASSES)
     idx = np.arange(N)
 
+    best_val = -1.0
+
     head_acc_list = []
     avg_loss_list = []
     val_correct_list = []
@@ -333,6 +353,7 @@ def train(training_path, validating_path, network, epochs=50, learning_rate=0.00
         for start in range(0, N, batch_size):
             sel = idx[start:start + batch_size]
             xb = data[sel]
+            xb = augment(xb)
             yb = encode_labels([labels[i] for i in sel])
 
             timediagnostic += 1
@@ -369,7 +390,8 @@ def train(training_path, validating_path, network, epochs=50, learning_rate=0.00
 
         avg_loss = running_loss / max(N, 1)
         head_acc = correct_heads / max(seen, 1)
-        
+
+
         print(f"Epoch {epoch + 1}/{epochs}  Avg Loss {avg_loss:.3f}  Head Accuracy {head_acc:.3f}")
         
         head_acc_list.append(head_acc)
@@ -378,10 +400,17 @@ def train(training_path, validating_path, network, epochs=50, learning_rate=0.00
         #Validation test every 
         val_correct, val_loss = validate(network, val_data, val_labels)
 
+        """if val_correct > best_val:
+            best_val = val_correct
+            for f in Path(".").glob("best_model_epoch_*"):
+                if f.is_file():
+                    f.unlink()
+            save_network(network, f"best_model_epoch_{epoch}.pkl")"""
+
         val_correct_list.append(val_correct)
         val_loss_list.append(val_loss)
 
-    query = input("Do you wish to see the training diagontics? (y/n)")
+    query = input("Do you wish to see the training diagnostics? (y/n)")
     if query == 'y' or query == 'yes':
         output.show_training(epochs, head_acc_list, avg_loss_list, val_correct_list, val_loss_list)
         
@@ -389,32 +418,69 @@ def train(training_path, validating_path, network, epochs=50, learning_rate=0.00
     return network
 
 
-def test(testing_path, network):
-    show_random_image(network, testing_path, "test")
+def test(testing_path, network, batch_size=BATCHSIZE):
 
-def validate(network, val_data, val_labels):
-    i = random.randrange(len(val_data))
-    image, true = val_data[i], val_labels[i]
-    
-    output = predict(network, image[None])         
-    probs = output.reshape(len(MATERIALS), len(CLASSES))
-    pred = decode_prediction(output)
+    data, labels = load_dataset(testing_path)
 
-    print(f"\n=== Random validation {true} image ===")
-    print(f"{'material':<11}{'predicted':<9}{'true':<9}" + "".join(f"{c:>8}" for c in CLASSES))
+    query = input("Do you wish to compute confusion matrices? (y/n)")
 
-    correct = 0
-    for m, material in enumerate(MATERIALS):
-        true_val = str(true[material]).upper()
-        if pred[material] == true_val:
-            correct += 1
-        row = "".join(f"{probs[m, c]:>8.2f}" for c in range(len(CLASSES)))
-        print(f"{material:<11}{pred[material]:<9}{true_val:<9}{row}")
+    if query == 'y' or query == 'yes':
 
-    loss = cce(encode_label(true), output)
-    print(f"loss: {loss:.3f}   |   correct heads: {correct}/{len(MATERIALS)}")
-    print("%"*terminal_char_len)
-    return correct, loss
+
+        nm, nc = len(MATERIALS), len(CLASSES)
+        cms = [np.zeros((nc, nc), dtype=int) for _ in range(nm)]
+        N = len(data)
+
+        #confusion matrix of all materials (split up later in the code for plotting)
+
+        """ example quadrant of perfect confusion matrix: 
+            Foam   | HIGH MEDIUM LOW NONE (true labels)
+            ---------------------------
+            HIGH   |  x     0     0   0
+            MEDIUM |  0     x     0   0
+            LOW    |  0     0     x   0 
+            NONE   |  0     0     0   x
+
+
+            going to do: MATERIAL1 MATERIAL2
+                         MATERIAL3 MATERIAL4
+        """
+
+        for s in range(0, N, batch_size):
+            xb = data[s:s + batch_size]
+            yb = encode_labels(labels[s:s + batch_size])
+            out = predict(network, xb)                       # whole batch at once                   
+            predict_idx = out.reshape(nm, nc, -1).argmax(axis=1)  
+            true_idx = yb.reshape(nm, nc, -1).argmax(axis=1) 
+            for m in range(nm):
+                np.add.at(cms[m], (true_idx[m], predict_idx[m]), 1)       # cms[m][t, p] += 1
+
+        for m, mat in enumerate(MATERIALS):
+            print(f"\n{mat}  (rows = true, cols = predicted)")
+            print("        " + "".join(f"{c:>8}" for c in CLASSES))
+            for t in range(nc):
+                print(f"{CLASSES[t]:>8}" + "".join(f"{cms[m][t, p]:>8}" for p in range(nc)))
+
+
+        output.confusion_matrices()
+
+def validate(network, val_data, val_labels, batch_size=BATCHSIZE):
+    nm, nc = len(MATERIALS), len(CLASSES)
+    N = len(val_data)
+    total_loss, total_correct = 0.0, 0
+    for s in range(0, N, batch_size):
+        xb = val_data[s:s + batch_size]
+        yb = encode_labels(val_labels[s:s + batch_size])
+        out = predict(network, xb)                       # whole batch at once
+        total_loss += cce(yb, out)                       # cce already sums over the batch
+        pred_idx = out.reshape(nm, nc, -1).argmax(axis=1)
+        true_idx = yb.reshape(nm, nc, -1).argmax(axis=1)
+        total_correct += int((pred_idx == true_idx).sum())
+    avg_loss = total_loss / N
+    avg_correct = total_correct / N                      # avg correct heads per image (0–4)
+    print(f"Avg val Loss: {avg_loss:.3f}   |   Avg val correct heads: {avg_correct:.2f}/{nm}")
+    print("."*terminal_char_len)
+    return avg_correct, avg_loss
 
 def save_network(network, path="model.pkl"):
     params = []
@@ -427,11 +493,18 @@ def save_network(network, path="model.pkl"):
             params.append(None)
     with open(path, "wb") as f:
         pickle.dump(params, f)
-    print(Fore.GREEN + f"Successfully saved model to {path}." + Style.RESET_ALL)
+   
 
 
-def load_network(path="model.pkl"):
+def load_network(network, model="best_model_*"):
+
+    matches = sorted(Path(".").glob(model))
+    if not matches:
+        print("Failed to find model file. Model unchanged.")
+        return network 
+
     network = build_network()
+    path = matches[-1]   
     with open(path, "rb") as f:
         params = pickle.load(f)
     for layer, p in zip(network, params):
@@ -439,5 +512,6 @@ def load_network(path="model.pkl"):
             layer.kernels, layer.biases = p["kernels"], p["biases"]
         elif isinstance(layer, Dense):
             layer.weights, layer.bias = p["weights"], p["bias"]
-    print(Fore.GREEN + "Loaded model successfully." + Style.RESET_ALL)
-    return network
+            return network
+
+

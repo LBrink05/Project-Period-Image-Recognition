@@ -14,8 +14,11 @@ def show_training(epochs, head_acc_list, avg_loss_list, val_correct_list, val_lo
 
     ax[0].plot(x, y1, color='orange'); ax[0].set_title("Average Loss"); ax[0].set_xlabel("Epochs")
     ax[1].plot(x, y2, color='blue'); ax[1].set_title("Head Accuracy"); ax[1].set_xlabel("Epochs")
-    ax[2].plot(x, y3, color='green'); ax[2].set_title("Loss (Validation)"); ax[2].set_xlabel("Epochs")
+    ax[2].plot(x, y3, color='green'); ax[2].set_title("Average Loss (Validation)"); ax[2].set_xlabel("Epochs")
     ax[3].plot(x, y4, color='purple'); ax[3].set_title("Head Accuracy (Validation)"); ax[3].set_xlabel("Epochs")
 
     plt.show()
 
+
+def confusion_matrices():
+    pass
