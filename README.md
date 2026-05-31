@@ -44,7 +44,7 @@ The **input.py** script represents the user-interface and **cnn.py** is the main
 
 ## NEURAL NETWORK STRUCTURE
 
-The network is a multiheaded convolutional network trained using mini-batches of 50 images and backpropagation at a learning rate of 0.0005 for 50 epochs. The loss function used to train models is categorical cross-entropy as it proportionally punishes the model to wrong its answers are. For every category classification, the loss function results are weighted by frequency of training examples in the training set. In addition, when pairing softmax with cross-entropy (canonical pairing), the required derivative of the loss function for backpropagation simplifies to `pred - true`.
+The network is a multiheaded convolutional network trained using mini-batches of 50 images and backpropagation at a learning rate of 0.0005 for 25 epochs. The loss function used to train models is categorical cross-entropy as it proportionally punishes the model to wrong its answers are. For every category classification, the loss function results are weighted by frequency of training examples in the training set. In addition, when pairing softmax with cross-entropy (canonical pairing), the required derivative of the loss function for backpropagation simplifies to `pred - true`.
 It consists of these layers: Conv -> ReLU -> MaxPool -> Conv -> ReLu -> MaxPool -> Dense -> GroupedSoftMax
 
 What the Layers do:

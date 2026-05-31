@@ -322,7 +322,7 @@ def show_random_image(network, path, set_name):
     return correct, loss
 
 
-def train(training_path, validating_path, network, epochs=50, learning_rate=0.0005, batch_size=BATCHSIZE):
+def train(training_path, validating_path, network, epochs=25, learning_rate=0.0005, batch_size=BATCHSIZE):
     val_data, val_labels = load_dataset(validating_path)
     data, labels = load_dataset(training_path)
     N = len(data)
