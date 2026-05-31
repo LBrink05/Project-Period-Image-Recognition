@@ -498,7 +498,7 @@ def save_network(network, path="model.pkl"):
    
 
 
-def load_network(network, model="best_model_*"):
+def load_network(network, model="model.pkl"):
 
     matches = sorted(Path(".").glob(model))
     if not matches:
