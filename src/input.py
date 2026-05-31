@@ -68,7 +68,11 @@ def start_live_video(network):
     query = input("Do you wish to start a live video feed (y/n)?: ")
     if query == 'y' or query == 'yes':
         print(Fore.GREEN + "Starting live video feed..." + Style.RESET_ALL)
-        live.live_video(network)
+        query = input("Do you wish to use your phone? If so, enter url: ")
+        if query != "":
+            live.live_video(network, query)
+        else:
+            live.live_video(network)
         print(Fore.YELLOW + "Stopping live video feed." + Style.RESET_ALL)
     
 
