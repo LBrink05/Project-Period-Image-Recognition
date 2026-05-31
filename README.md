@@ -9,7 +9,7 @@ We have 2 cameras angled left and right of the conveyor belt who's images (384x3
 
 The labeled dataset is split into a training batch (80%) to train the model, a validation batch to fine tune the model (10%) and a testing batch (10%) in order to test the model on unseen images. 
 
-Data leaks are expected with minimal footage, but limited with p-hashing to avoid near-duplicate images.
+Data leaks are expected with minimal footage, but limited with p-hashing and per-video seperation of data to avoid duplicate images.
 
 ## VIDEO BATCHES
 We filmed these 10 batches, with 6 videos per batch, getting around 5-10 seconds per video.
