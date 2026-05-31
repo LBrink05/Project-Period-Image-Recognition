@@ -44,14 +44,14 @@ The **input.py** script represents the user-interface and **cnn.py** is the main
 
 ## NEURAL NETWORK STRUCTURE
 
-The network is a multiheaded convolutional network trained using mini-batches of 50 images at a learning rate of 0.0005 for 50 epochs.
+The network is a multiheaded convolutional network trained using mini-batches of 50 images and backpropagation at a learning rate of 0.0005 for 50 epochs. The loss function used to train models is categorical cross-entropy as it proportionally punishes the model to wrong its answers are. For every category classification, the loss function results are weighted by frequency of training examples in the training set. 
 
 It consists of these layers: Conv -> ReLU -> MaxPool -> Conv -> ReLu -> MaxPool -> Dense -> GroupedSoftMax
 
 What the Layers do:
 - Convolutional Layer extracts features using valid convolution 
 - ReLU (Rectified Linear Unit) activation layer transforms features (clamps negative to 0)
-- MaxPool reduces the amount of values within an image of features by compressing it by taking the max value within a window which slides across the image.
+- MaxPool reduces the amount of values within an image of features by compressing it by taking the max value within a 2x2 window which slides across the image.
 - Dense layer computes scores for every option i.e. Foam: Medium etc. (called logits)
 - GroupedSoftMax applies softmax function to every material independently (4 independent softmax classifiers)
 
