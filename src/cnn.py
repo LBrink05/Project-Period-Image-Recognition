@@ -64,17 +64,26 @@ class Convolutional:
         return self.output
 
     def backward(self, output_gradient, learning_rate):
-        
         N = output_gradient.shape[0]
-        dY = output_gradient.reshape(N, self.depth, -1)      
+        C, k = self.input_depth, self.kernel_size
+        oh, ow = self.output_height, self.output_width
+        dY = output_gradient.reshape(N, self.depth, -1)
+        W_row = self.kernels.reshape(self.depth, C * k * k)
 
         kernels_gradient = np.matmul(dY, self.cols.transpose(0, 2, 1)).sum(axis=0)
         kernels_gradient = kernels_gradient.reshape(self.kernels_shape) / N
         bias_gradient = dY.sum(axis=(0, 2)).reshape(self.depth, 1, 1) / N
 
+        # input gradient: dCols = W^T @ dY, then fold patches back (col2im)
+        dcols = (W_row.T @ dY).reshape(N, C, k, k, oh, ow)
+        dX = np.zeros((N, C, self.input_height, self.input_width), dtype=output_gradient.dtype)
+        for a in range(k):
+            for b in range(k):
+                dX[:, :, a:a + oh, b:b + ow] += dcols[:, :, a, b]
+
         self.kernels -= learning_rate * kernels_gradient
         self.biases  -= learning_rate * bias_gradient
-        return None                                # first layer -> input grad discarded
+        return dX                             # first layer -> input grad discarded
 
 
 class Dense:
@@ -172,9 +181,6 @@ def cce(y_true, y_pred):
     return -np.sum(y_true * np.log(y_pred + 1e-9))
 
 
-# from TRAINING labels, count per (material, class):
-counts = encode_labels(train_labels).reshape(nm, nc, -1).sum(axis=2)   # (nm, nc)
-weights = counts.sum(axis=1, keepdims=True) / (nc * np.maximum(counts, 1))  # inverse-freq, (nm, nc)
 
 def cce_prime(y_true, y_pred, weights=None):
     g = y_pred - y_true
@@ -188,18 +194,17 @@ def cce_prime(y_true, y_pred, weights=None):
 #--------------------------- Model----------------------------------#
 
 def build_network():
-    conv = Convolutional(SHAPE, KERNELSIZE, DEPTH)
-    pooled_h = conv.output_height // 2
-    pooled_w = conv.output_width // 2
-    flat = DEPTH * pooled_h * pooled_w
-
+    conv1 = Convolutional(SHAPE, KERNELSIZE, DEPTH)                # (3,128,128) -> (32,124,124)
+    h1, w1 = conv1.output_height // 2, conv1.output_width // 2     # 62, 62 after pool
+    conv2 = Convolutional((DEPTH, h1, w1), KERNELSIZE, DEPTH)      # (32,62,62) -> (32,58,58)
+    h2, w2 = conv2.output_height // 2, conv2.output_width // 2     # 29, 29 after pool
+    flat = DEPTH * h2 * w2
     return [
-        conv,
-        ReLU(),
-        MaxPooling(pool_size=2, stride=2),
+        conv1, ReLU(), MaxPooling(2, 2),
+        conv2, ReLU(), MaxPooling(2, 2),
         Reshape(),
         Dense(flat, len(MATERIALS) * len(CLASSES)),
-        GroupedSoftmax(n_groups=len(MATERIALS), n_classes=len(CLASSES)),
+        GroupedSoftmax(len(MATERIALS), len(CLASSES)),
     ]
 
 
@@ -342,6 +347,10 @@ def train(training_path, validating_path, network, epochs=50, learning_rate=0.00
         idx = np.arange(N)
         print(f"Single-batch mode: training on {N} images.")
 
+    # from TRAINING labels, count per (material, class):
+    counts = encode_labels(labels).reshape(nm, nc, -1).sum(axis=2)   # (nm, nc)
+    weights = counts.sum(axis=1, keepdims=True) / (nc * np.maximum(counts, 1))  # inverse-freq, (nm, nc)
+
     print(Fore.YELLOW + "Beginning training...\n" + Style.RESET_ALL)
 
     for epoch in range(epochs):
@@ -362,10 +371,10 @@ def train(training_path, validating_path, network, epochs=50, learning_rate=0.00
             if diag:
                 fwd_t, bwd_t = defaultdict(float), defaultdict(float)
                 out = xb
-                for layer in network:
+                for i, layer in enumerate(network):
                     t = time.perf_counter()
                     out = layer.forward(out)
-                    fwd_t[type(layer).__name__] += time.perf_counter() - t
+                    fwd_t[f"{i}:{type(layer).__name__}"] += time.perf_counter() - t
             else:
                 out = predict(network, xb)
 
@@ -400,13 +409,6 @@ def train(training_path, validating_path, network, epochs=50, learning_rate=0.00
         #Validation test every 
         val_correct, val_loss = validate(network, val_data, val_labels)
 
-        """if val_correct > best_val:
-            best_val = val_correct
-            for f in Path(".").glob("best_model_epoch_*"):
-                if f.is_file():
-                    f.unlink()
-            save_network(network, f"best_model_epoch_{epoch}.pkl")"""
-
         val_correct_list.append(val_correct)
         val_loss_list.append(val_loss)
 
@@ -433,7 +435,7 @@ def test(testing_path, network, batch_size=BATCHSIZE):
 
         #confusion matrix of all materials (split up later in the code for plotting)
 
-        """ example quadrant of perfect confusion matrix: 
+        """ example of perfect confusion matrix: 
             Foam   | HIGH MEDIUM LOW NONE (true labels)
             ---------------------------
             HIGH   |  x     0     0   0
