@@ -15,6 +15,7 @@ def take_photo():
     cap.release()
 
 #Note: To use with phone, use IP Webcam App and use http://192.168.2.5:8080/video for address
+# https://play.google.com/store/apps/details?id=com.pas.webcam&hl=en-US
 
 def live_video(network, address):
 
@@ -26,7 +27,7 @@ def live_video(network, address):
 
     while cap.isOpened():
 
-        time.sleep(0.2) #decide how often to sample images for analysis #to not overheat computer
+        time.sleep(0) #decide how often to sample images for analysis #to not overheat computer
         ret, frame = cap.read(address)
 
         img = process_live_images(frame)

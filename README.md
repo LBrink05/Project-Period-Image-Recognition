@@ -39,8 +39,8 @@ pirpurmoreal1 and pirpurmoreal2 judge yourself,
 pirpurmorebitumen: MEDIUM MEDIUM NONE NONE
 
 ## PROGRAM STRUCTURE
-The program is split into 4 scripts. Images will be extracted from videos, classified and distributed to the training, testing and validations subsets using **dataset.py**.
-The **input.py** script represents the user-interface and **cnn.py** is the main working part of the program. The user-interface is loading the dataset whilst the convolutional neural-network handles the machine learning required to identify the state of the belt's contents. **output.py** deals with the graphical illustrations of the results computed by the neural network.
+The program is split into 5 scripts. Images will be extracted from videos, classified and distributed to the training, testing and validations subsets using **dataset.py**.
+The **input.py** script represents the user-interface and **cnn.py** is the main working part of the program. The user-interface is loading the dataset whilst the convolutional neural-network handles the machine learning required to identify the state of the belt's contents. **output.py** deals with the graphical illustrations of the results computed by the neural network. **live.py** deals with everything related to a live video feed classifying images in real time.
 
 ## NEURAL NETWORK STRUCTURE
 
