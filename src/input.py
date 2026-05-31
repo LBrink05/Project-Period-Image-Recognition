@@ -9,7 +9,9 @@ from colorama import Fore, Back, Style
 import sys
 import pickle
 import cnn
+
 import output
+import live
 
 ALL_PATH = Path("Data/final/all")
 TRAINING_PATH = Path("Data/final/training")
@@ -50,7 +52,7 @@ def start_loading_model(network):
         cnn.load_network(network, query)
     else:
         cnn.load_network(network)
-        
+
     print(Fore.GREEN + "Loaded model successfully." + Style.RESET_ALL)
 
 def start_save_model(network):
@@ -61,6 +63,13 @@ def start_save_model(network):
     else:
         cnn.save_network(network)
         print(Fore.GREEN + f"Successfully saved model.pkl" + Style.RESET_ALL)
+
+def start_live_video(network):
+    query = input("Do you wish to start a live video feed (y/n)?: ")
+    if query == 'y' or query == 'yes':
+        print(Fore.GREEN + "Starting live video feed..." + Style.RESET_ALL)
+        live.live_video(network)
+        print(Fore.YELLOW + "Stopping live video feed." + Style.RESET_ALL)
     
 
 def menu():
@@ -72,7 +81,8 @@ def menu():
     print("(3) Validate model")
     print("(4) Save model")
     print("(5) Load model")
-    print("(6) Exit")
+    print("(6) Live Video")
+    print("(7) Exit")
     print("-"*terminal_char_len)
 
 def main():
@@ -95,6 +105,8 @@ def main():
         elif choice == "5":
             start_loading_model(network)
         elif choice == "6":
+            start_live_video(network)
+        elif choice == "7":
             shutting_down("Exiting program :)", Fore.YELLOW)
             break
         else:

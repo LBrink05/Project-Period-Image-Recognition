@@ -146,9 +146,6 @@ def process_images():
             img = center_crop(img, new_width, new_height)
             img = img.resize((center_crop_size, center_crop_size))
 
-            #generalize training set only (rotate, flip, mild color jitter, )
-            #DO LATER
-
             img.save(imgpath + file.name)
     
 

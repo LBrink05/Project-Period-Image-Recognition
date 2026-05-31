@@ -321,6 +321,18 @@ def show_random_image(network, path, set_name):
     print(f"loss: {loss:.3f}   |   correct heads: {correct}/{len(MATERIALS)}")
     return correct, loss
 
+def test_image(network, frame):
+
+    output = predict(network, frame)
+    probs = output.reshape(len(MATERIALS), len(CLASSES))
+    pred = decode_prediction(output)
+
+    pred = decode_prediction(predict(network, frame))
+    print("-"*terminal_char_len)
+    print("Prediction: " + "   ".join(f"{mat}={pred[mat]}" for mat in MATERIALS))
+    
+    return pred
+    
 
 def train(training_path, validating_path, network, epochs=25, learning_rate=0.0005, batch_size=BATCHSIZE):
     val_data, val_labels = load_dataset(validating_path)
