@@ -12,6 +12,7 @@ import cnn
 
 import output
 import live
+import imgseg
 
 ALL_PATH = Path("Data/final/all")
 TRAINING_PATH = Path("Data/final/training")
@@ -75,6 +76,13 @@ def start_live_video(network):
             live.live_video(network)
         print(Fore.YELLOW + "Stopping live video feed." + Style.RESET_ALL)
     
+def start_imgseg(network):
+    query = input("Do you wish to start the Image Segmentation Demo? (y/n): ")
+    if query == 'y' or query == 'yes':
+        print(Fore.GREEN + "Starting Image Segmentation Demo..." + Style.RESET_ALL)
+        imgseg.demo(network, TRAINING_PATH)
+        print(Fore.YELLOW + "Stopping Image Segmentation Demo." + Style.RESET_ALL)
+        
 
 def menu():
     print("-"*terminal_char_len)
@@ -85,8 +93,9 @@ def menu():
     print("(3) Validate model")
     print("(4) Save model")
     print("(5) Load model")
-    print("(6) Live Video")
-    print("(7) Exit")
+    print("(6) Live Video Classification")
+    print("(7) Image Segmentation Demo")
+    print("(8) Exit")
     print("-"*terminal_char_len)
 
 def main():
@@ -111,11 +120,13 @@ def main():
         elif choice == "6":
             start_live_video(network)
         elif choice == "7":
+            start_imgseg(network)
+        elif choice == "8":
             shutting_down("Exiting program :)", Fore.YELLOW)
             break
         else:
             print(Fore.RED + "\nErroneous user-input received." + Style.RESET_ALL)
-            print(Fore.YELLOW + "Please enter 1-6" + Style.RESET_ALL)
+            print(Fore.YELLOW + "Please enter 1-8" + Style.RESET_ALL)
 
 
 # program executed directly only runs main

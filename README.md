@@ -1,6 +1,6 @@
 # PRO357 GIVING MACHINES VISION USING MACHINE LEARNING
 
-## PURPOSEvi
+## PURPOSE
 This program is intended to identify the contents of a belt that transports shredded foam pieces. We attempt at identifying how much Bitumin, Aluminium or EPS may be found as impurities on the belt alongside Foam.
 
 ## DATASET

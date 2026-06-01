@@ -9,9 +9,12 @@ from colorama import Fore, Style, Back
 import dataset
 import matplotlib.pyplot as plt
 import time
-import output
+
 from collections import defaultdict
 import shutil
+
+import output
+import imgseg
 
 center_crop_size = 128
 BATCHSIZE = 50                                           # images per batch
