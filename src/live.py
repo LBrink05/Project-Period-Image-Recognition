@@ -14,21 +14,23 @@ def take_photo():
     cv2.imwrite('webcamphoto.jpg', frame)
     cap.release()
 
-#Note: To use with phone, use IP Webcam App and use http://192.168.2.5:8080/video for address
+#Note: To use with phone, use IP Webcam App and use https://192.168.2.5:8080/video for address
 # https://play.google.com/store/apps/details?id=com.pas.webcam&hl=en-US
 
-def live_video(network, address):
+def live_video(network, address=0):
 
     try:
-        cap = cv2.VideoCapture(0)
+        cap = cv2.VideoCapture(address)
     except Exception:
         print("Incorrect camera url given")
         return
 
     while cap.isOpened():
 
-        time.sleep(0) #decide how often to sample images for analysis #to not overheat computer
-        ret, frame = cap.read(address)
+        #time.sleep(0) #decide how often to sample images for analysis #to not overheat computer
+        ret, frame = cap.read()
+        if not ret:
+            break
 
         img = process_live_images(frame)
         pred = cnn.test_image(network, img)
