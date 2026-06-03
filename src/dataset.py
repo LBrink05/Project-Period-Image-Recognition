@@ -30,7 +30,8 @@ def shutting_down(statement="", style=""):
     
 def extract_labels(camid, videoid):
     # Expecting: cam0_videoname_#_foam_bitumen_aluminium_eps.mp4
-    matches = list(RAW_DATA_PATH.rglob(f'{camid}_{videoid}_*.mp4'))
+    matches = list(RAW_DATA_PATH.rglob(f'{camid}_{videoid}_*.mp4')) \
+        + list(RAW_DATA_PATH.rglob(f'{camid}_{videoid}_*.mov'))
     if not matches:
         raise FileNotFoundError(f"No video found for {camid}_{videoid}")
     if len(matches) > 1:
