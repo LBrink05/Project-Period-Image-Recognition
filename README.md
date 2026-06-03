@@ -38,6 +38,38 @@ pirpureps: MEDIUM NONE NONE MEDIUM,
 pirpurmoreal1 and pirpurmoreal2 judge yourself, 
 pirpurmorebitumen: MEDIUM MEDIUM NONE NONE
 
+## Second filming session: 
+cam2: Tessa \
+cam3: Juan \
+cam4: Agnes \
+cam5: Claudia \
+cam6: Pola (only for the none 30 second video) \ 
+cam7: Davide \
+
+
+order + sample names:
+1. pirpural2 (9*)
+2. pirpural1 (9*)
+3. epshigh (9*)
+4. pirpurmixeverything (9*)
+5. pirpurhigh (9*)
+6. none (1* 30 seconds 2 phones) (if you dont have this on your phone dont worry we did it when most people were gone)
+7. al1high (4*)
+8. al1medium (4*)
+9. al1low (4*)
+10. al2high (4*)
+11. al2medium (4*)
+12. al2low (4*)
+13. bitumenhigh (4*)
+14. bitumenmedium (4*)
+15. bitumenlow (4*)
+16. pirpurmedium (9*)
+17. pirpurlow (9*)
+18. epsmedium (9*)
+
+FOR THE NAMING: 
+camn_samplename_samplevideonumber_foamCL_BitumenCL_AluminiumCL_EpsCL
+
 ## PROGRAM STRUCTURE
 The program is split into 5 scripts. Images will be extracted from videos, classified and distributed to the training, testing and validations subsets using **dataset.py**.
 The **input.py** script represents the user-interface and **cnn.py** is the main working part of the program. The user-interface is loading the dataset whilst the convolutional neural-network handles the machine learning required to identify the state of the belt's contents. **output.py** deals with the graphical illustrations of the results computed by the neural network. **live.py** deals with everything related to a live video feed classifying images in real time.
