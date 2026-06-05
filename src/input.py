@@ -31,7 +31,11 @@ def shutting_down(statement="", style=""):
 def start_train(network):
     print("\n[Training]")
     print(Fore.GREEN + "Training started...\n" + Style.RESET_ALL)
-    cnn.train(TRAINING_PATH, VALIDATING_PATH, network)
+    query = input("Enter amount of epochs (empty=25): ")
+    if query == "":
+        cnn.train(TRAINING_PATH, VALIDATING_PATH, network)
+    else:
+        cnn.train(TRAINING_PATH, VALIDATING_PATH, network, epochs)
     print(Fore.GREEN + "Training successfully completed.\n" + Style.RESET_ALL)
 
 def start_test(network):

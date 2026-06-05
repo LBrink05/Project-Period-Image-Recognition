@@ -39,7 +39,8 @@ class Convolutional:
         self.depth = depth
 
         self.kernels_shape = (depth, self.input_depth, kernel_size, kernel_size)
-        self.kernels = (np.random.randn(*self.kernels_shape) * 0.1).astype(np.float32)
+        fan_in = self.input_depth * kernel_size * kernel_size
+        self.kernels = (np.random.randn(*self.kernels_shape) * np.sqrt(2.0 / fan_in)).astype(np.float32)
         self.biases = np.zeros((depth, 1, 1), dtype=np.float32)
 
         self.output_height = self.input_height - kernel_size + 1
@@ -89,7 +90,7 @@ class Convolutional:
 class Dense:
 
     def __init__(self, input_size, output_size):
-        self.weights = (np.random.randn(output_size, input_size) * 0.1).astype(np.float32)
+        self.weights = (np.random.randn(output_size, input_size) * np.sqrt(2.0 / input_size)).astype(np.float32)
         self.bias = (np.random.randn(output_size, 1) * 0.1).astype(np.float32)
 
     def forward(self, input):                      
@@ -396,7 +397,7 @@ def train(training_path, validating_path, network, epochs=25, learning_rate=0.00
             correct_heads += int((pred_idx == true_idx).sum())
             seen += nm * xb.shape[0]
 
-            grad = cce_prime(yb, out)
+            grad = cce_prime(yb, out, np.clip(weights, 0.3, 4.0))
             if diag:
                 for layer in reversed(network):
                     t = time.perf_counter()
@@ -528,6 +529,7 @@ def load_network(network, model="model.pkl"):
             layer.kernels, layer.biases = p["kernels"], p["biases"]
         elif isinstance(layer, Dense):
             layer.weights, layer.bias = p["weights"], p["bias"]
-            return network
+    
+    return network
 
 

@@ -31,7 +31,8 @@ def shutting_down(statement="", style=""):
 def extract_labels(camid, videoid):
     # Expecting: cam0_videoname_#_foam_bitumen_aluminium_eps.mp4
     matches = list(RAW_DATA_PATH.rglob(f'{camid}_{videoid}_*.mp4')) \
-        + list(RAW_DATA_PATH.rglob(f'{camid}_{videoid}_*.mov'))
+        + list(RAW_DATA_PATH.rglob(f'{camid}_{videoid}_*.mov')) \
+        + list(RAW_DATA_PATH.rglob(f'{camid}_{videoid}_*.MOV'))
     if not matches:
         raise FileNotFoundError(f"No video found for {camid}_{videoid}")
     if len(matches) > 1:
@@ -45,72 +46,80 @@ def extract_labels(camid, videoid):
     return foam, bitumen, aluminium, eps
 
 def extract_images():
-    for file in RAW_DATA_PATH.rglob('*.mp4'):
-        if file.is_file():
-            frameid = 0
-            videoid = file.stem.split('_')[1] + '_' +  file.stem.split('_')[2]
-            camid = file.stem.split('_')[0]
-            video = cv2.VideoCapture(file)
-            recent_hashes = deque(maxlen=5)
-            filepath = str(RAW_DATA_PATH) + f"/{camid}/{videoid}/"
-            pathlib.Path(filepath).mkdir(parents=True, exist_ok=True)
+    input(Fore.YELLOW + "Be aware to manually delete files before retrying extraction." + Style.RESET_ALL)
+    exts = {'.mp4', '.mov'}
+    for file in RAW_DATA_PATH.rglob('*'):
+        if file.suffix.lower() in exts:
+            if file.is_file():
+                camid = file.stem.split('_')[0]
+                videoid = file.stem.split('_')[1] + '_' + file.stem.split('_')[2]
+                filepath = str(RAW_DATA_PATH) + f"/{camid}/{videoid}/"
 
-            #Remove any prior generated images in cami/videoi directory
-            for f in Path(filepath).glob('*'):
-                if f.is_file():
-                    f.unlink()
-
-            while True:
-                ret, frame = video.read()
-                if not ret:
-                    break
-
-                pil_frame = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-                hash_o = imagehash.phash(pil_frame)
-
-                #usually 5, (higher value -> more strict), 0 is no filter
-                if any(hash_o - h < 5 for h in recent_hashes):
-                    frameid += 1
+                # skip videos whose frames have already been extracted
+                if any(Path(filepath).glob('*.jpg')):
+                    print(f"Skipping (already extracted): {file.name}")
                     continue
 
-                name = f"{filepath}{camid}_{videoid}_{frameid}.jpg"
-                cv2.imwrite(name, frame)
-                recent_hashes.append(hash_o)
-                print('Extracting: ' + name)
-                frameid += 1
-            
+                pathlib.Path(filepath).mkdir(parents=True, exist_ok=True)
 
-            video.release()
-            cv2.destroyAllWindows()
+                frameid = 0
+                video = cv2.VideoCapture(file)
+                recent_hashes = deque(maxlen=5)
+
+                while True:
+                    ret, frame = video.read()
+                    if not ret:
+                        break
+
+                    pil_frame = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                    hash_o = imagehash.phash(pil_frame)
+
+                    # usually 5, (higher value -> more strict), 0 is no filter
+                    if any(hash_o - h < 5 for h in recent_hashes):
+                        frameid += 1
+                        continue
+
+                    name = f"{filepath}{camid}_{videoid}_{frameid}.jpg"
+                    cv2.imwrite(name, frame)
+                    recent_hashes.append(hash_o)
+                    print('Extracting: ' + name)
+                    frameid += 1
+
+                video.release()
+                cv2.destroyAllWindows()
 
     shutting_down("Successfully extracted frames!", Fore.GREEN)
 
 def classify_images_vid():
     input(Fore.YELLOW + "Be aware to manually delete files before retrying classification." + Style.RESET_ALL)
 
+    changed_path = Path("Data/labeled")
+    changed_path.mkdir(parents=True, exist_ok=True)
+
     for file in RAW_DATA_PATH.rglob('*.jpg'):
         if file.is_file():
-            print(f"File found: {file}")
-
-            img = mpimg.imread(file)
-
-            camid, sampleid, videonum, frameid =  file.stem.split('_')
+            camid, sampleid, videonum, frameid = file.stem.split('_')
             videoid = sampleid + '_' + videonum
-            
+
+            # skip frames that are already labeled in Data/labeled
+            if any(changed_path.glob(f"{camid}_{videoid}_{frameid}_*")):
+                print(f"Skipping (already labeled): {file.name}")
+                continue
+
+            print(f"File found: {file}")
             foam_flag, bitumen_flag, aluminium_flag, eps_flag = extract_labels(camid, videoid)
 
-            changed_path = "Data/labeled"
-            pathlib.Path(changed_path).mkdir(parents=True, exist_ok=True)
-            changed_filepath = changed_path +  f"/{camid}_{videoid}_{frameid}" + "_FOAM_" + foam_flag + "_BITUMEN_" + bitumen_flag + "_AL_" + aluminium_flag + "_EPS_" + eps_flag + ".jpg"
+            changed_filepath = str(changed_path) + f"/{camid}_{videoid}_{frameid}" \
+                + "_FOAM_" + foam_flag + "_BITUMEN_" + bitumen_flag \
+                + "_AL_" + aluminium_flag + "_EPS_" + eps_flag + ".jpg"
             shutil.move(file, changed_filepath)
-            
-    #removing leftover empty directories
+
+    # removing leftover empty directories
     path = Path("Data/unlabeled")
     for child in path.iterdir():
         if child.is_dir() and child.name != 'videos':
             shutil.rmtree(child)
 
-    
     shutting_down("Successfully classified Images", Fore.GREEN)
 
 def center_crop(img, new_width, new_height):
