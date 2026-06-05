@@ -35,7 +35,7 @@ def start_train(network):
     if query == "":
         cnn.train(TRAINING_PATH, VALIDATING_PATH, network)
     else:
-        cnn.train(TRAINING_PATH, VALIDATING_PATH, network, epochs)
+        cnn.train(TRAINING_PATH, VALIDATING_PATH, network, epochs=query)
     print(Fore.GREEN + "Training successfully completed.\n" + Style.RESET_ALL)
 
 def start_test(network):
@@ -51,7 +51,7 @@ def start_validate(network):
     print(Fore.GREEN + "Validating successfully completed.\n" + Style.RESET_ALL)
 
 def start_loading_model(network):
-    query = input("Which model would you like to load? (Empty = best_model_*.pkl): ")
+    query = input("Which model would you like to load? (Empty = model.pkl): ")
     if query != "":
         cnn.load_network(network, query)
     else:
@@ -86,11 +86,10 @@ def menu():
     print("-"*terminal_char_len)
     print("(1) Train model")
     print("(2) Test model")
-    print("(3) Validate model")
-    print("(4) Save model")
-    print("(5) Load model")
-    print("(6) Live Video")
-    print("(7) Exit")
+    print("(3) Save model")
+    print("(4) Load model")
+    print("(5) Live Video")
+    print("(6) Exit")
     print("-"*terminal_char_len)
 
 def main():
@@ -107,14 +106,12 @@ def main():
         elif choice == "2":
             start_test(network)
         elif choice == "3":
-            start_validate(network)
-        elif choice == "4":
             start_save_model(network)
-        elif choice == "5":
+        elif choice == "4":
             start_loading_model(network)
-        elif choice == "6":
+        elif choice == "5":
             start_live_video(network)
-        elif choice == "7":
+        elif choice == "6":
             shutting_down("Exiting program :)", Fore.YELLOW)
             break
         else:

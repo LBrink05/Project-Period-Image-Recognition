@@ -286,6 +286,21 @@ def count_batches(path):
 
 # ----------------- Train / Test / Validate --------------------------------#
 
+def macro_recall(cms):
+    """cms: list of (nc x nc) confusion matrices, cm[true, pred].
+    Returns (per_material_macro (nm,), overall_macro float, per_class list)."""
+    per_material, per_class_all = [], []
+    for cm in cms:
+        support = cm.sum(axis=1)                       # true count per class (row sums)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            recall = np.diag(cm) / support             # nan where support == 0
+        present = support > 0
+        per_class_all.append(recall)
+        per_material.append(recall[present].mean() if present.any() else np.nan)
+    per_material = np.array(per_material)
+    overall = np.nanmean(per_material)                 # mean over heads, skipping empty ones
+    return per_material, overall, per_class_all
+
 def augment(batch):                       
     out = batch.copy()
     N = out.shape[0]
@@ -341,33 +356,30 @@ def train(training_path, validating_path, network, epochs=25, learning_rate=0.00
     N = len(data)
     nm, nc = len(MATERIALS), len(CLASSES)
     idx = np.arange(N)
-
     best_val = -1.0
-
     head_acc_list = []
     avg_loss_list = []
     val_correct_list = []
     val_loss_list = []
-
     timediagnostic = 0
 
     query = input("Do you wish to train on a single batch? (y/n)")
     if query == 'y' or query == 'yes':
-        sel = np.random.choice(N, batch_size, replace=False)                   
-        data = data[sel]                            
-        labels = [labels[i] for i in sel]          
-        N = len(data)                              
+        sel = np.random.choice(N, batch_size, replace=False)
+        data = data[sel]
+        labels = [labels[i] for i in sel]
+        N = len(data)
         idx = np.arange(N)
         print(f"Single-batch mode: training on {N} images.")
 
     # from TRAINING labels, count per (material, class):
-    counts = encode_labels(labels).reshape(nm, nc, -1).sum(axis=2)   # (nm, nc)
-    weights = counts.sum(axis=1, keepdims=True) / (nc * np.maximum(counts, 1))  # inverse-freq, (nm, nc)
+    counts = encode_labels(labels).reshape(nm, nc, -1).sum(axis=2)               # (nm, nc)
+    weights = counts.sum(axis=1, keepdims=True) / (nc * np.maximum(counts, 1))   # inverse-freq, (nm, nc)
 
     print(Fore.YELLOW + "Beginning training...\n" + Style.RESET_ALL)
 
-    for epoch in range(epochs):
-        np.random.shuffle(idx)                      
+    for epoch in range(int(epochs)):
+        np.random.shuffle(idx)
         running_loss = 0.0
         correct_heads = 0
         seen = 0
@@ -413,25 +425,25 @@ def train(training_path, validating_path, network, epochs=25, learning_rate=0.00
         avg_loss = running_loss / max(N, 1)
         head_acc = correct_heads / max(seen, 1)
 
-
         print(f"Epoch {epoch + 1}/{epochs}  Avg Loss {avg_loss:.3f}  Head Accuracy {head_acc:.3f}")
-        
         head_acc_list.append(head_acc)
         avg_loss_list.append(avg_loss)
 
-        #Validation test every 
-        val_correct, val_loss = validate(network, val_data, val_labels)
-
-        val_correct_list.append(val_correct)
+        val_macro, val_loss, val_head_acc = validate(network, val_data, val_labels)
+        val_correct_list.append(val_macro)          # plot macro recall instead of head acc
         val_loss_list.append(val_loss)
+
+        if val_macro > best_val:
+            best_val = val_macro
+            save_network(network, "best_model.pkl")
+            print(Fore.GREEN + f"  new best macro recall {val_macro:.3f} -> saved" + Style.RESET_ALL)
 
     query = input("Do you wish to see the training diagnostics? (y/n)")
     if query == 'y' or query == 'yes':
         output.show_training(epochs, head_acc_list, avg_loss_list, val_correct_list, val_loss_list)
-        
 
+    network = load_network(network, "best_model.pkl")   # restore best-macro weights before returning
     return network
-
 
 def test(testing_path, network, batch_size=BATCHSIZE):
 
@@ -476,26 +488,34 @@ def test(testing_path, network, batch_size=BATCHSIZE):
             for t in range(nc):
                 print(f"{CLASSES[t]:>8}" + "".join(f"{cms[m][t, p]:>8}" for p in range(nc)))
 
+        per_mat, macro, _ = macro_recall(cms)
+        print("\nMacro recall: " + "  ".join(f"{m}={r:.3f}" for m, r in zip(MATERIALS, per_mat)))
+        print(f"Overall macro recall: {macro:.3f}")
 
         output.confusion_matrices(cms, MATERIALS, CLASSES)
 
 def validate(network, val_data, val_labels, batch_size=BATCHSIZE):
     nm, nc = len(MATERIALS), len(CLASSES)
     N = len(val_data)
-    total_loss, total_correct = 0.0, 0
+    total_loss = 0.0
+    cms = [np.zeros((nc, nc), dtype=np.int64) for _ in range(nm)]
     for s in range(0, N, batch_size):
         xb = val_data[s:s + batch_size]
         yb = encode_labels(val_labels[s:s + batch_size])
-        out = predict(network, xb)                       # whole batch at once
-        total_loss += cce(yb, out)                       # cce already sums over the batch
+        out = predict(network, xb)
+        total_loss += cce(yb, out)
         pred_idx = out.reshape(nm, nc, -1).argmax(axis=1)
         true_idx = yb.reshape(nm, nc, -1).argmax(axis=1)
-        total_correct += int((pred_idx == true_idx).sum())
-    avg_loss = total_loss / N
-    avg_correct = total_correct / N                      # avg correct heads per image (0–4)
-    print(f"Avg val Loss: {avg_loss:.3f}   |   Avg val correct heads: {avg_correct / nm}")
-    print("."*terminal_char_len)
-    return avg_correct, avg_loss
+        for m in range(nm):
+            np.add.at(cms[m], (true_idx[m], pred_idx[m]), 1)
+
+    avg_loss  = total_loss / N
+    head_acc  = sum(np.trace(cm) for cm in cms) / (nm * N)   # your old "avg correct heads" / nm
+    per_mat, macro, _ = macro_recall(cms)
+    print(f"Avg val Loss: {avg_loss:.3f}   |   head acc: {head_acc:.3f}   |   macro recall: {macro:.3f}")
+    print("  per-material recall: " + "  ".join(f"{m}={r:.2f}" for m, r in zip(MATERIALS, per_mat)))
+    print("." * terminal_char_len)
+    return macro, avg_loss, head_acc
 
 def save_network(network, path="model.pkl"):
     params = []
