@@ -23,12 +23,9 @@ DEPTH      = 32                                          # number of conv filter
 CLASSES   = ["NONE", "LOW", "MEDIUM", "HIGH"]
 MATERIALS = ["foam", "bitumen", "aluminium", "eps"]
 
-terminal_char_len = shutil.get_terminal_size(fallback=(80, 24)).columns
+N_THRESH = len(CLASSES) - 1                              # 3 thresholds per material (head)
 
-# Convention: spatial tensors are (N, C, H, W); the flattened activations that
-# flow through Dense / Softmax are (features, N) so the Dense weight matrix
-# keeps its (out, in) orientation.  Parameter gradients are averaged over the
-# batch (the `/ N`); activation gradients passed backward stay per-sample.
+terminal_char_len = shutil.get_terminal_size(fallback=(80, 24)).columns
 
 class Convolutional:
 
@@ -47,8 +44,8 @@ class Convolutional:
         self.output_width = self.input_width - kernel_size + 1
         self.output_shape = (depth, self.output_height, self.output_width)
 
-    def forward(self, data): 
-                   
+    def forward(self, data):
+
         self.input = data
         N = data.shape[0]
         C, k = self.input_depth, self.kernel_size
@@ -57,10 +54,9 @@ class Convolutional:
         windows = np.lib.stride_tricks.sliding_window_view(data, (k, k), axis=(2, 3))
         self.cols = windows.transpose(0, 1, 4, 5, 2, 3).reshape(N, C * k * k, oh * ow)
 
-        W_row = self.kernels.reshape(self.depth, C * k * k)     
+        W_row = self.kernels.reshape(self.depth, C * k * k)
         out = W_row @ self.cols
         self.output = out.reshape(N, self.depth, oh, ow) + self.biases
-
 
         return self.output
 
@@ -75,7 +71,6 @@ class Convolutional:
         kernels_gradient = kernels_gradient.reshape(self.kernels_shape) / N
         bias_gradient = dY.sum(axis=(0, 2)).reshape(self.depth, 1, 1) / N
 
-        # input gradient: dCols = W^T @ dY, then fold patches back (col2im)
         dcols = (W_row.T @ dY).reshape(N, C, k, k, oh, ow)
         dX = np.zeros((N, C, self.input_height, self.input_width), dtype=output_gradient.dtype)
         for a in range(k):
@@ -84,7 +79,7 @@ class Convolutional:
 
         self.kernels -= learning_rate * kernels_gradient
         self.biases  -= learning_rate * bias_gradient
-        return dX                             # first layer -> input grad discarded
+        return dX                           
 
 
 class Dense:
@@ -93,15 +88,15 @@ class Dense:
         self.weights = (np.random.randn(output_size, input_size) * np.sqrt(2.0 / input_size)).astype(np.float32)
         self.bias = (np.random.randn(output_size, 1) * 0.1).astype(np.float32)
 
-    def forward(self, input):                      
+    def forward(self, input):
         self.input = input
-        return self.weights @ input + self.bias   
+        return self.weights @ input + self.bias
 
-    def backward(self, output_gradient, learning_rate): 
+    def backward(self, output_gradient, learning_rate):
         N = output_gradient.shape[1]
         weights_gradient = (output_gradient @ self.input.T) / N
         bias_gradient = output_gradient.mean(axis=1, keepdims=True)
-        input_gradient = self.weights.T @ output_gradient       
+        input_gradient = self.weights.T @ output_gradient
 
         self.weights -= learning_rate * weights_gradient
         self.bias -= learning_rate * bias_gradient
@@ -109,27 +104,16 @@ class Dense:
 
 
 class Reshape:
-    
 
     def __init__(self, input_shape=None, output_shape=None):
         pass
 
-    def forward(self, input):                    
+    def forward(self, input):
         self.in_shape = input.shape
-        return input.reshape(input.shape[0], -1).T 
+        return input.reshape(input.shape[0], -1).T
 
-    def backward(self, output_gradient, learning_rate=None):   
+    def backward(self, output_gradient, learning_rate=None):
         return output_gradient.T.reshape(self.in_shape)
-
-
-class ReLU:
-
-    def forward(self, data):
-        self.input = data
-        return np.maximum(0, data)
-
-    def backward(self, grad, lr=None):
-        return grad * (self.input > 0)
 
 
 class MaxPooling:
@@ -144,7 +128,7 @@ class MaxPooling:
         oh, ow = H // p, W // p
         base = data[:, :, :oh * p, :ow * p]
         cells = np.stack([base[:, :, i::p, j::p] for i in range(p) for j in range(p)], axis=0)
-        self.argmax = cells.argmax(axis=0).astype(np.uint8) 
+        self.argmax = cells.argmax(axis=0).astype(np.uint8)
         return cells.max(axis=0)
 
     def backward(self, output_gradient, learning_rate=None):
@@ -157,38 +141,48 @@ class MaxPooling:
             input_gradient[:, :, i:oh * p:p, j:ow * p:p] = output_gradient * (self.argmax == k)
         return input_gradient
 
-class GroupedSoftmax:
 
-    def __init__(self, n_groups=4, n_classes=4):
-        self.n_groups = n_groups
-        self.n_classes = n_classes
+class Coral:
 
-    def forward(self, x):                         
-        g, c, N = self.n_groups, self.n_classes, x.shape[1]
-        z = x.reshape(g, c, N)
-        z = z - np.max(z, axis=1, keepdims=True)  
-        e = np.exp(z)
-        self.output = (e / np.sum(e, axis=1, keepdims=True)).reshape(g * c, N)
+    def __init__(self, n_groups, n_thresh):
+        self.nm = n_groups
+        self.nt = n_thresh
+        self.bias = np.tile(np.linspace(1.0, -1.0, n_thresh, dtype=np.float32),
+                            (n_groups, 1))                        
+
+    def forward(self, f):
+        logits = np.clip(f[:, None, :] + self.bias[:, :, None], -30.0, 30.0)   
+        self.output = (1.0 / (1.0 + np.exp(-logits))).reshape(self.nm * self.nt, f.shape[1])
         return self.output
 
-    def backward(self, output_gradient, learning_rate=None):
-        return output_gradient                     
+    def backward(self, output_gradient, learning_rate):
+       
+        g = output_gradient.reshape(self.nm, self.nt, -1)         
+        N = g.shape[2]
+        self.bias -= learning_rate * (g.sum(axis=2) / N)          
+        return g.sum(axis=1)                                      
 
 
 # ---------------------- Loss Functions ---------------------------#
 
-def cce(y_true, y_pred):
-    # Categorical cross-entropy, summed over the whole batch
-    return -np.sum(y_true * np.log(y_pred + 1e-9))
+class ReLU:
+
+    def forward(self, data):
+        self.input = data
+        return np.maximum(0, data)
+
+    def backward(self, grad, lr=None):
+        return grad * (self.input > 0)
+
+def bce(y_true, y_pred):
+    p = np.clip(y_pred, 1e-7, 1 - 1e-7)
+    return -np.sum(y_true * np.log(p) + (1 - y_true) * np.log(1 - p))
 
 
-
-def cce_prime(y_true, y_pred, weights=None):
-    g = y_pred - y_true
-    if weights is not None:
-        nm, nc = weights.shape
-        per_head_w = (y_true.reshape(nm, nc, -1) * weights[:, :, None]).sum(axis=1)  # true-class weight, (nm, N)
-        g = g * np.repeat(per_head_w, nc, axis=0)                                    # scale each head block
+def bce_prime(y_true, y_pred, sample_w=None):
+    g = y_pred - y_true                                 
+    if sample_w is not None:                             
+        g = g * np.repeat(sample_w, N_THRESH, axis=0)     
     return g
 
 
@@ -204,8 +198,8 @@ def build_network():
         conv1, ReLU(), MaxPooling(2, 2),
         conv2, ReLU(), MaxPooling(2, 2),
         Reshape(),
-        Dense(flat, len(MATERIALS) * len(CLASSES)),
-        GroupedSoftmax(len(MATERIALS), len(CLASSES)),
+        Dense(flat, len(MATERIALS)),                            
+        Coral(len(MATERIALS), N_THRESH),                        
     ]
 
 
@@ -216,30 +210,59 @@ def predict(network, x):
     return out
 
 
-def encode_label(label_dict):
+# ---- ordinal label encoding (cumulative thresholds) ----
 
-    vec = np.zeros((len(MATERIALS) * len(CLASSES), 1), dtype=np.float32)
+def _ordinal_vec(t):
+    return (np.arange(N_THRESH) < t).astype(np.float32)
+
+
+def encode_label(label_dict):
+    nm = len(MATERIALS)
+    vec = np.zeros((nm * N_THRESH, 1), dtype=np.float32)
     for m, material in enumerate(MATERIALS):
         value = str(label_dict[material]).upper()
         if value in CLASSES:
-            vec[m * len(CLASSES) + CLASSES.index(value), 0] = 1.0
+            t = CLASSES.index(value)
+            vec[m * N_THRESH:(m + 1) * N_THRESH, 0] = _ordinal_vec(t)
     return vec
 
 
 def encode_labels(labels):
-    nm, nc = len(MATERIALS), len(CLASSES)
-    vec = np.zeros((nm * nc, len(labels)), dtype=np.float32)
+    nm = len(MATERIALS)
+    Y = np.zeros((nm * N_THRESH, len(labels)), dtype=np.float32)
     for j, ld in enumerate(labels):
         for m, material in enumerate(MATERIALS):
             value = str(ld[material]).upper()
             if value in CLASSES:
-                vec[m * nc + CLASSES.index(value), j] = 1.0
-    return vec
+                t = CLASSES.index(value)
+                Y[m * N_THRESH:(m + 1) * N_THRESH, j] = _ordinal_vec(t)
+    return Y
+
+
+def class_counts(labels):
+    nm, nc = len(MATERIALS), len(CLASSES)
+    counts = np.zeros((nm, nc), dtype=np.float64)
+    for ld in labels:
+        for m, material in enumerate(MATERIALS):
+            v = str(ld[material]).upper()
+            if v in CLASSES:
+                counts[m, CLASSES.index(v)] += 1
+    return counts
+
+
+def ranks_from_outputs(out):
+    nm = len(MATERIALS)
+    return (out.reshape(nm, N_THRESH, -1) >= 0.5).sum(axis=1)
+
+
+def ranks_from_targets(y):
+    nm = len(MATERIALS)
+    return y.reshape(nm, N_THRESH, -1).sum(axis=1).astype(int)
 
 
 def decode_prediction(output):
-    z = output.reshape(len(MATERIALS), len(CLASSES))
-    return {mat: CLASSES[int(np.argmax(z[m]))] for m, mat in enumerate(MATERIALS)}
+    ranks = ranks_from_outputs(output).reshape(len(MATERIALS))
+    return {mat: CLASSES[int(ranks[m])] for m, mat in enumerate(MATERIALS)}
 
 
 # -------------------------- Data loading -------------------------------#
@@ -287,26 +310,25 @@ def count_batches(path):
 # ----------------- Train / Test / Validate --------------------------------#
 
 def macro_recall(cms):
-    """cms: list of (nc x nc) confusion matrices, cm[true, pred].
-    Returns (per_material_macro (nm,), overall_macro float, per_class list)."""
     per_material, per_class_all = [], []
     for cm in cms:
-        support = cm.sum(axis=1)                       # true count per class (row sums)
+        support = cm.sum(axis=1)                      
         with np.errstate(invalid="ignore", divide="ignore"):
-            recall = np.diag(cm) / support             # nan where support == 0
+            recall = np.diag(cm) / support            
         present = support > 0
         per_class_all.append(recall)
         per_material.append(recall[present].mean() if present.any() else np.nan)
     per_material = np.array(per_material)
-    overall = np.nanmean(per_material)                 # mean over heads, skipping empty ones
+    overall = np.nanmean(per_material)                 
     return per_material, overall, per_class_all
 
-def augment(batch):                       
+
+def augment(batch):
     out = batch.copy()
     N = out.shape[0]
-    flip = np.random.rand(N) < 0.5        
+    flip = np.random.rand(N) < 0.5
     out[flip] = out[flip, :, :, ::-1]
-    out *= np.random.uniform(0.9, 1.1, size=(N, 1, 1, 1)).astype(out.dtype) 
+    out *= np.random.uniform(0.9, 1.1, size=(N, 1, 1, 1)).astype(out.dtype)
     return np.clip(out, 0.0, 1.0)
 
 
@@ -318,37 +340,34 @@ def show_random_image(network, path, set_name):
     i = random.randrange(len(data))
     image, true = data[i], labels[i]
 
-    output = predict(network, image[None])          # add batch dim -> (16, 1)
-    probs = output.reshape(len(MATERIALS), len(CLASSES))
-    pred = decode_prediction(output)
+    out = predict(network, image[None])             
+    probs = out.reshape(len(MATERIALS), N_THRESH)  
+    pred = decode_prediction(out)
 
+    thr_names = [f">={CLASSES[k + 1]}" for k in range(N_THRESH)]  
     print(f"\n=== Random {set_name} image: batch {batch}, position {i} ===")
-    print(f"{'material':<11}{'predicted':<9}{'true':<9}" + "".join(f"{c:>8}" for c in CLASSES))
+    print(f"{'material':<11}{'predicted':<9}{'true':<9}" + "".join(f"{c:>10}" for c in thr_names))
 
     correct = 0
     for m, material in enumerate(MATERIALS):
         true_val = str(true[material]).upper()
         if pred[material] == true_val:
             correct += 1
-        row = "".join(f"{probs[m, c]:>8.2f}" for c in range(len(CLASSES)))
+        row = "".join(f"{probs[m, k]:>10.2f}" for k in range(N_THRESH))
         print(f"{material:<11}{pred[material]:<9}{true_val:<9}{row}")
 
-    loss = cce(encode_label(true), output)
+    loss = bce(encode_label(true), out)
     print(f"loss: {loss:.3f}   |   correct heads: {correct}/{len(MATERIALS)}")
     return correct, loss
 
+
 def test_image(network, frame):
-
-    output = predict(network, frame)
-    probs = output.reshape(len(MATERIALS), len(CLASSES))
-    pred = decode_prediction(output)
-
-    pred = decode_prediction(predict(network, frame))
-    print("-"*terminal_char_len)
+    out = predict(network, frame)
+    pred = decode_prediction(out)
+    print("-" * terminal_char_len)
     print("Prediction: " + "   ".join(f"{mat}={pred[mat]}" for mat in MATERIALS))
-    
     return pred
-    
+
 
 def train(training_path, validating_path, network, epochs=25, learning_rate=0.0005, batch_size=BATCHSIZE):
     val_data, val_labels = load_dataset(validating_path)
@@ -372,9 +391,10 @@ def train(training_path, validating_path, network, epochs=25, learning_rate=0.00
         idx = np.arange(N)
         print(f"Single-batch mode: training on {N} images.")
 
-    # from TRAINING labels, count per (material, class):
-    counts = encode_labels(labels).reshape(nm, nc, -1).sum(axis=2)               # (nm, nc)
-    weights = counts.sum(axis=1, keepdims=True) / (nc * np.maximum(counts, 1))   # inverse-freq, (nm, nc)
+    # inverse-frequency class weights from TRAINING labels
+    counts = class_counts(labels)                                               
+    weights = counts.sum(axis=1, keepdims=True) / (nc * np.maximum(counts, 1))  
+    weights = np.clip(weights, 0.3, 4.0)
 
     print(Fore.YELLOW + "Beginning training...\n" + Style.RESET_ALL)
 
@@ -403,13 +423,14 @@ def train(training_path, validating_path, network, epochs=25, learning_rate=0.00
             else:
                 out = predict(network, xb)
 
-            running_loss += cce(yb, out)
-            pred_idx = out.reshape(nm, nc, -1).argmax(axis=1)
-            true_idx = yb.reshape(nm, nc, -1).argmax(axis=1)
-            correct_heads += int((pred_idx == true_idx).sum())
+            running_loss += bce(yb, out)
+            pred_rank = ranks_from_outputs(out)               
+            true_rank = ranks_from_targets(yb)               
+            correct_heads += int((pred_rank == true_rank).sum())
             seen += nm * xb.shape[0]
 
-            grad = cce_prime(yb, out, np.clip(weights, 0.3, 4.0))
+            sample_w = np.take_along_axis(weights, true_rank, axis=1) 
+            grad = bce_prime(yb, out, sample_w)
             if diag:
                 for layer in reversed(network):
                     t = time.perf_counter()
@@ -430,7 +451,7 @@ def train(training_path, validating_path, network, epochs=25, learning_rate=0.00
         avg_loss_list.append(avg_loss)
 
         val_macro, val_loss, val_head_acc = validate(network, val_data, val_labels)
-        val_correct_list.append(val_macro)          # plot macro recall instead of head acc
+        val_correct_list.append(val_macro)         
         val_loss_list.append(val_loss)
 
         if val_macro > best_val:
@@ -442,8 +463,9 @@ def train(training_path, validating_path, network, epochs=25, learning_rate=0.00
     if query == 'y' or query == 'yes':
         output.show_training(epochs, head_acc_list, avg_loss_list, val_correct_list, val_loss_list)
 
-    network = load_network(network, "best_model.pkl")   # restore best-macro weights before returning
+    network = load_network(network, "best_model.pkl")   
     return network
+
 
 def test(testing_path, network, batch_size=BATCHSIZE):
 
@@ -453,34 +475,29 @@ def test(testing_path, network, batch_size=BATCHSIZE):
 
     if query == 'y' or query == 'yes':
 
-
         nm, nc = len(MATERIALS), len(CLASSES)
         cms = [np.zeros((nc, nc), dtype=int) for _ in range(nm)]
         N = len(data)
 
         #confusion matrix of all materials (split up later in the code for plotting)
 
-        """ example of perfect confusion matrix: 
-            Foam   | HIGH MEDIUM LOW NONE (true labels)
+        """ example of perfect confusion matrix:
+            Foam   | NONE LOW MEDIUM HIGH (predicted)
             ---------------------------
-            HIGH   |  x     0     0   0
-            MEDIUM |  0     x     0   0
-            LOW    |  0     0     x   0 
-            NONE   |  0     0     0   x
-
-
-            going to do: MATERIAL1 MATERIAL2
-                         MATERIAL3 MATERIAL4
+            NONE   |  x    0    0    0
+            LOW    |  0    x    0    0
+            MEDIUM |  0    0    x    0
+            HIGH   |  0    0    0    x
         """
 
         for s in range(0, N, batch_size):
             xb = data[s:s + batch_size]
             yb = encode_labels(labels[s:s + batch_size])
-            out = predict(network, xb)                       # whole batch at once                   
-            predict_idx = out.reshape(nm, nc, -1).argmax(axis=1)  
-            true_idx = yb.reshape(nm, nc, -1).argmax(axis=1) 
+            out = predict(network, xb)                       
+            pred_rank = ranks_from_outputs(out)             
+            true_rank = ranks_from_targets(yb)             
             for m in range(nm):
-                np.add.at(cms[m], (true_idx[m], predict_idx[m]), 1)       # cms[m][t, p] += 1
+                np.add.at(cms[m], (true_rank[m], pred_rank[m]), 1)   
 
         for m, mat in enumerate(MATERIALS):
             print(f"\n{mat}  (rows = true, cols = predicted)")
@@ -494,6 +511,7 @@ def test(testing_path, network, batch_size=BATCHSIZE):
 
         output.confusion_matrices(cms, MATERIALS, CLASSES)
 
+
 def validate(network, val_data, val_labels, batch_size=BATCHSIZE):
     nm, nc = len(MATERIALS), len(CLASSES)
     N = len(val_data)
@@ -503,19 +521,20 @@ def validate(network, val_data, val_labels, batch_size=BATCHSIZE):
         xb = val_data[s:s + batch_size]
         yb = encode_labels(val_labels[s:s + batch_size])
         out = predict(network, xb)
-        total_loss += cce(yb, out)
-        pred_idx = out.reshape(nm, nc, -1).argmax(axis=1)
-        true_idx = yb.reshape(nm, nc, -1).argmax(axis=1)
+        total_loss += bce(yb, out)
+        pred_rank = ranks_from_outputs(out)
+        true_rank = ranks_from_targets(yb)
         for m in range(nm):
-            np.add.at(cms[m], (true_idx[m], pred_idx[m]), 1)
+            np.add.at(cms[m], (true_rank[m], pred_rank[m]), 1)
 
-    avg_loss  = total_loss / N
-    head_acc  = sum(np.trace(cm) for cm in cms) / (nm * N)   # your old "avg correct heads" / nm
+    avg_loss = total_loss / N
+    head_acc = sum(np.trace(cm) for cm in cms) / (nm * N)
     per_mat, macro, _ = macro_recall(cms)
     print(f"Avg val Loss: {avg_loss:.3f}   |   head acc: {head_acc:.3f}   |   macro recall: {macro:.3f}")
     print("  per-material recall: " + "  ".join(f"{m}={r:.2f}" for m, r in zip(MATERIALS, per_mat)))
     print("." * terminal_char_len)
     return macro, avg_loss, head_acc
+
 
 def save_network(network, path="model.pkl"):
     params = []
@@ -524,11 +543,12 @@ def save_network(network, path="model.pkl"):
             params.append({"kernels": layer.kernels, "biases": layer.biases})
         elif isinstance(layer, Dense):
             params.append({"weights": layer.weights, "bias": layer.bias})
+        elif isinstance(layer, Coral):
+            params.append({"bias": layer.bias})
         else:
             params.append(None)
     with open(path, "wb") as f:
         pickle.dump(params, f)
-   
 
 
 def load_network(network, model="model.pkl"):
@@ -541,7 +561,7 @@ def load_network(network, model="model.pkl"):
         print(Fore.GREEN + f"Found model file {model}" + Style.RESET_ALL)
 
     network = build_network()
-    path = matches[-1]   
+    path = matches[-1]
     with open(path, "rb") as f:
         params = pickle.load(f)
     for layer, p in zip(network, params):
@@ -549,7 +569,7 @@ def load_network(network, model="model.pkl"):
             layer.kernels, layer.biases = p["kernels"], p["biases"]
         elif isinstance(layer, Dense):
             layer.weights, layer.bias = p["weights"], p["bias"]
-    
+        elif isinstance(layer, Coral):
+            layer.bias = p["bias"]
+
     return network
-
-
