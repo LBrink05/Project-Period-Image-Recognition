@@ -14,11 +14,12 @@ from collections import defaultdict
 import shutil
 
 center_crop_size = 128
-BATCHSIZE = 50                                           # images per batch
+BATCHSIZE = 32                                           # images per batch  (was 1 -- see notes)
 SHAPE     = (3, center_crop_size, center_crop_size)      # (channels, height, width)
 KERNELSIZE = 5                                           # conv kernel is KERNELSIZE x KERNELSIZE
 DEPTH      = 32                                          # number of conv filters (output channels)
 
+MOMENTUM = 0.9                                           # SGD momentum (EMA form: keeps your LR valid)
 
 CLASSES   = ["NONE", "LOW", "MEDIUM", "HIGH"]
 MATERIALS = ["foam", "bitumen", "aluminium", "eps"]
@@ -39,6 +40,10 @@ class Convolutional:
         fan_in = self.input_depth * kernel_size * kernel_size
         self.kernels = (np.random.randn(*self.kernels_shape) * np.sqrt(2.0 / fan_in)).astype(np.float32)
         self.biases = np.zeros((depth, 1, 1), dtype=np.float32)
+
+        # momentum (velocity) buffers
+        self.v_kernels = np.zeros_like(self.kernels)
+        self.v_biases = np.zeros_like(self.biases)
 
         self.output_height = self.input_height - kernel_size + 1
         self.output_width = self.input_width - kernel_size + 1
@@ -77,9 +82,12 @@ class Convolutional:
             for b in range(k):
                 dX[:, :, a:a + oh, b:b + ow] += dcols[:, :, a, b]
 
-        self.kernels -= learning_rate * kernels_gradient
-        self.biases  -= learning_rate * bias_gradient
-        return dX                           
+        # momentum update (EMA of the gradient, then step)
+        self.v_kernels = MOMENTUM * self.v_kernels + (1.0 - MOMENTUM) * kernels_gradient
+        self.v_biases  = MOMENTUM * self.v_biases  + (1.0 - MOMENTUM) * bias_gradient
+        self.kernels -= learning_rate * self.v_kernels
+        self.biases  -= learning_rate * self.v_biases
+        return dX
 
 
 class Dense:
@@ -87,6 +95,10 @@ class Dense:
     def __init__(self, input_size, output_size):
         self.weights = (np.random.randn(output_size, input_size) * np.sqrt(2.0 / input_size)).astype(np.float32)
         self.bias = (np.random.randn(output_size, 1) * 0.1).astype(np.float32)
+
+        # momentum (velocity) buffers
+        self.v_weights = np.zeros_like(self.weights)
+        self.v_bias = np.zeros_like(self.bias)
 
     def forward(self, input):
         self.input = input
@@ -98,8 +110,10 @@ class Dense:
         bias_gradient = output_gradient.mean(axis=1, keepdims=True)
         input_gradient = self.weights.T @ output_gradient
 
-        self.weights -= learning_rate * weights_gradient
-        self.bias -= learning_rate * bias_gradient
+        self.v_weights = MOMENTUM * self.v_weights + (1.0 - MOMENTUM) * weights_gradient
+        self.v_bias    = MOMENTUM * self.v_bias    + (1.0 - MOMENTUM) * bias_gradient
+        self.weights -= learning_rate * self.v_weights
+        self.bias    -= learning_rate * self.v_bias
         return input_gradient
 
 
@@ -148,19 +162,21 @@ class Coral:
         self.nm = n_groups
         self.nt = n_thresh
         self.bias = np.tile(np.linspace(1.0, -1.0, n_thresh, dtype=np.float32),
-                            (n_groups, 1))                        
+                            (n_groups, 1))
+        self.v_bias = np.zeros_like(self.bias)             # momentum buffer
 
     def forward(self, f):
-        logits = np.clip(f[:, None, :] + self.bias[:, :, None], -30.0, 30.0)   
+        logits = np.clip(f[:, None, :] + self.bias[:, :, None], -30.0, 30.0)
         self.output = (1.0 / (1.0 + np.exp(-logits))).reshape(self.nm * self.nt, f.shape[1])
         return self.output
 
     def backward(self, output_gradient, learning_rate):
-       
-        g = output_gradient.reshape(self.nm, self.nt, -1)         
+        g = output_gradient.reshape(self.nm, self.nt, -1)
         N = g.shape[2]
-        self.bias -= learning_rate * (g.sum(axis=2) / N)          
-        return g.sum(axis=1)                                      
+        bias_gradient = g.sum(axis=2) / N
+        self.v_bias = MOMENTUM * self.v_bias + (1.0 - MOMENTUM) * bias_gradient
+        self.bias -= learning_rate * self.v_bias
+        return g.sum(axis=1)
 
 
 # ---------------------- Loss Functions ---------------------------#
@@ -180,9 +196,9 @@ def bce(y_true, y_pred):
 
 
 def bce_prime(y_true, y_pred, sample_w=None):
-    g = y_pred - y_true                                 
-    if sample_w is not None:                             
-        g = g * np.repeat(sample_w, N_THRESH, axis=0)     
+    g = y_pred - y_true
+    if sample_w is not None:
+        g = g * np.repeat(sample_w, N_THRESH, axis=0)
     return g
 
 
@@ -198,8 +214,8 @@ def build_network():
         conv1, ReLU(), MaxPooling(2, 2),
         conv2, ReLU(), MaxPooling(2, 2),
         Reshape(),
-        Dense(flat, len(MATERIALS)),                            
-        Coral(len(MATERIALS), N_THRESH),                        
+        Dense(flat, len(MATERIALS)),
+        Coral(len(MATERIALS), N_THRESH),
     ]
 
 
@@ -312,14 +328,14 @@ def count_batches(path):
 def macro_recall(cms):
     per_material, per_class_all = [], []
     for cm in cms:
-        support = cm.sum(axis=1)                      
+        support = cm.sum(axis=1)
         with np.errstate(invalid="ignore", divide="ignore"):
-            recall = np.diag(cm) / support            
+            recall = np.diag(cm) / support
         present = support > 0
         per_class_all.append(recall)
         per_material.append(recall[present].mean() if present.any() else np.nan)
     per_material = np.array(per_material)
-    overall = np.nanmean(per_material)                 
+    overall = np.nanmean(per_material)
     return per_material, overall, per_class_all
 
 
@@ -340,11 +356,11 @@ def show_random_image(network, path, set_name):
     i = random.randrange(len(data))
     image, true = data[i], labels[i]
 
-    out = predict(network, image[None])             
-    probs = out.reshape(len(MATERIALS), N_THRESH)  
+    out = predict(network, image[None])
+    probs = out.reshape(len(MATERIALS), N_THRESH)
     pred = decode_prediction(out)
 
-    thr_names = [f">={CLASSES[k + 1]}" for k in range(N_THRESH)]  
+    thr_names = [f">={CLASSES[k + 1]}" for k in range(N_THRESH)]
     print(f"\n=== Random {set_name} image: batch {batch}, position {i} ===")
     print(f"{'material':<11}{'predicted':<9}{'true':<9}" + "".join(f"{c:>10}" for c in thr_names))
 
@@ -392,13 +408,14 @@ def train(training_path, validating_path, network, epochs=25, learning_rate=0.00
         print(f"Single-batch mode: training on {N} images.")
 
     # inverse-frequency class weights from TRAINING labels
-    counts = class_counts(labels)                                               
-    weights = counts.sum(axis=1, keepdims=True) / (nc * np.maximum(counts, 1))  
+    counts = class_counts(labels)
+    weights = counts.sum(axis=1, keepdims=True) / (nc * np.maximum(counts, 1))
     weights = np.clip(weights, 0.3, 4.0)
 
     print(Fore.YELLOW + "Beginning training...\n" + Style.RESET_ALL)
 
     for epoch in range(int(epochs)):
+
         np.random.shuffle(idx)
         running_loss = 0.0
         correct_heads = 0
@@ -424,12 +441,12 @@ def train(training_path, validating_path, network, epochs=25, learning_rate=0.00
                 out = predict(network, xb)
 
             running_loss += bce(yb, out)
-            pred_rank = ranks_from_outputs(out)               
-            true_rank = ranks_from_targets(yb)               
+            pred_rank = ranks_from_outputs(out)
+            true_rank = ranks_from_targets(yb)
             correct_heads += int((pred_rank == true_rank).sum())
             seen += nm * xb.shape[0]
 
-            sample_w = np.take_along_axis(weights, true_rank, axis=1) 
+            sample_w = np.take_along_axis(weights, true_rank, axis=1)
             grad = bce_prime(yb, out, sample_w)
             if diag:
                 for layer in reversed(network):
@@ -451,7 +468,7 @@ def train(training_path, validating_path, network, epochs=25, learning_rate=0.00
         avg_loss_list.append(avg_loss)
 
         val_macro, val_loss, val_head_acc = validate(network, val_data, val_labels)
-        val_correct_list.append(val_macro)         
+        val_correct_list.append(val_macro)
         val_loss_list.append(val_loss)
 
         if val_macro > best_val:
@@ -463,7 +480,7 @@ def train(training_path, validating_path, network, epochs=25, learning_rate=0.00
     if query == 'y' or query == 'yes':
         output.show_training(epochs, head_acc_list, avg_loss_list, val_correct_list, val_loss_list)
 
-    network = load_network(network, "best_model.pkl")   
+    network = load_network(network, "best_model.pkl")
     return network
 
 
@@ -493,11 +510,11 @@ def test(testing_path, network, batch_size=BATCHSIZE):
         for s in range(0, N, batch_size):
             xb = data[s:s + batch_size]
             yb = encode_labels(labels[s:s + batch_size])
-            out = predict(network, xb)                       
-            pred_rank = ranks_from_outputs(out)             
-            true_rank = ranks_from_targets(yb)             
+            out = predict(network, xb)
+            pred_rank = ranks_from_outputs(out)
+            true_rank = ranks_from_targets(yb)
             for m in range(nm):
-                np.add.at(cms[m], (true_rank[m], pred_rank[m]), 1)   
+                np.add.at(cms[m], (true_rank[m], pred_rank[m]), 1)
 
         for m, mat in enumerate(MATERIALS):
             print(f"\n{mat}  (rows = true, cols = predicted)")
@@ -550,20 +567,19 @@ def save_network(network, path="model.pkl"):
     with open(path, "wb") as f:
         pickle.dump(params, f)
 
-
 def load_network(network, model="model.pkl"):
 
     matches = sorted(Path(".").glob(model))
     if not matches:
         print(Fore.RED + "Failed to find model file. Model unchanged!" + Style.RESET_ALL)
         return network
-    else:
-        print(Fore.GREEN + f"Found model file {model}" + Style.RESET_ALL)
 
-    network = build_network()
+    print(Fore.GREEN + f"Found model file {model}" + Style.RESET_ALL)
+
     path = matches[-1]
     with open(path, "rb") as f:
         params = pickle.load(f)
+
     for layer, p in zip(network, params):
         if isinstance(layer, Convolutional):
             layer.kernels, layer.biases = p["kernels"], p["biases"]
@@ -573,3 +589,5 @@ def load_network(network, model="model.pkl"):
             layer.bias = p["bias"]
 
     return network
+
+   
